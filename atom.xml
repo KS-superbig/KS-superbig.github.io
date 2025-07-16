@@ -2,7 +2,12 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://KS-superbig.github.io</id>
     <title>Hexo</title>
+    <subtitle></subtitle>
+    <icon>https://ks-superbig.github.io/images/favicon.ico</icon>
     <link href="https://KS-superbig.github.io" />
+    <author>
+      <name>John Doe</name>
+    </author>
     <updated>2025-07-03T04:05:19.071Z</updated>
     <entry>
         <id>https://ks-superbig.github.io/2025/07/03/hello-world/</id>

@@ -2,7 +2,12 @@
 <rss version="2.0">
     <channel>
         <title>Hexo</title>
+        <subtitle></subtitle>
+        <icon>https://ks-superbig.github.io/images/favicon.ico</icon>
         <link>https://KS-superbig.github.io</link>
+        <author>
+          <name>John Doe</name>
+        </author>
         <description></description>
         <language>en</language>
         <pubDate>Thu, 03 Jul 2025 12:05:19 +0800</pubDate>
