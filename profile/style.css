@@ -21,9 +21,9 @@ body {
 
 /* 返回首页按钮样式 */
 .back-home {
-  position: fixed; 
-  top: 20px; 
-  left: 20px; 
+  position: fixed;
+  top: 20px;
+  left: 20px;
   z-index: 1001;
   background: rgba(255, 255, 255, 0.9);
   color: #333;
@@ -41,7 +41,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.back-home:hover { 
+.back-home:hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
@@ -287,6 +287,7 @@ body {
     opacity: 0;
     transform: translatey(40px);
   }
+
   100% {
     opacity: 1;
   }
@@ -364,7 +365,7 @@ body {
   cursor: pointer;
 }
 
-.card-contact + .card-contact {
+.card-contact+.card-contact {
   margin-top: 16px;
 }
 
