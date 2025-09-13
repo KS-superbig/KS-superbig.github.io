@@ -160,4 +160,16 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 
 	updateCarousel();
+
+	// 为CSAPP卡片添加点击事件
+	const csappCard = document.querySelector('.pregnancy-content').closest('.deconstructed-card');
+	if (csappCard) {
+		csappCard.style.cursor = 'pointer';
+		csappCard.addEventListener('click', function(e) {
+			// 如果点击的不是其他链接，就跳转到CSAPP
+			if (!e.target.closest('a') || e.target.closest('.cta-link')) {
+				window.location.href = '/2025/08/02/CSAPP/';
+			}
+		});
+	}
 }); 
