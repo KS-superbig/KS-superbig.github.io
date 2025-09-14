@@ -1,0 +1,1656 @@
+---
+title: CSAPP
+photos:
+  - https://ks-superbig.github.io/images/csapp-cover.jpg
+---
+深入理解计算机系统是CMU的镇校神课，从这本书中以程序员的视角为你介绍计算机，让你对计算机有一个初步整体的认识，为今后深入其他领域打下坚实的基础。课程内含的lab更能很好激发你的学习兴趣。
+
+
+**前记**
+本次我只记录了两个实验分别是bomb和attack，而且主要记录思路和汇编代码的相应解读，关于实验获取，网上资源很多（使用Linux推荐的途径是用VMware虚拟机装Ubuntu系统），关于视频学习强烈推荐九曲阑干视频，包括笔记中相应截图都是取自其视频，而网上其他开源笔记也有很多，我提供一个自认为质量较高的链接。
+九曲阑干视频链接：https://www.bilibili.com/video/BV1cD4y1D7uR/?spm_id_from=333.337.search-card.all.click&vd_source=b84fda245001a8c50a9fe12486d52f41
+笔记：https://wdxtub.com/work/
+# CSAPP
+
+## labs
+
+### bomb
+
+phase_1
+
+~~~asm
+
+00000000000012db <phase_1>:
+    12db:       48 83 ec 08             sub    $0x8,%rsp      
+    12df:       48 8d 35 7a 18 00 00    lea    0x187a(%rip),%rsi        # 2b60 <_IO_stdin_used+0x150>
+    12e6:       e8 62 05 00 00          callq  184d <strings_not_equal>//上面的rsi是第二个参数，rdi是第一个参                                                                          数
+    12eb:       85 c0                   test   %eax,%eax   //返回值如果是1那么ZF为0那么test结果为假，则爆炸
+    12ed:       74 05                   je     12f4 <phase_1+0x19>  //只有返回值0即两个部分相等才可以跳转
+    12ef:       e8 58 08 00 00          callq  1b4c <explode_bomb>
+    12f4:       48 83 c4 08             add    $0x8,%rsp
+    12f8:       c3                      retq
+
+~~~
+
+
+
+phase_2：
+
+~~~asm
+00000000000012f9 <phase_2>:
+    12f9:       55                      push   %rbp
+    12fa:       53                      push   %rbx
+    12fb:       48 83 ec 28             sub    $0x28,%rsp
+    12ff:       64 48 8b 04 25 28 00    mov    %fs:0x28,%rax
+    1306:       00 00
+    1308:       48 89 44 24 18          mov    %rax,0x18(%rsp)
+    130d:       31 c0                   xor    %eax,%eax   //一个清零操作
+    130f:       48 89 e6                mov    %rsp,%rsi
+    1312:       e8 71 08 00 00          callq  1b88 <read_six_numbers> 
+    1317:       83 3c 24 00             cmpl   $0x0,(%rsp)
+    131b:       79 05                   jns    1322 <phase_2+0x29>  //cmpl，jns这个组合的作用是检查是否为非负                                                                       数，>=0则跳转1322处mov否则爆炸
+    131d:       e8 2a 08 00 00          callq  1b4c <explode_bomb>  
+    1322:       48 89 e5                mov    %rsp,%rbp     //rbp中存储当前rsp中的数字
+    1325:       bb 01 00 00 00          mov    $0x1,%ebx   //ebx中设置为1
+  * 132a:       89 d8                   mov    %ebx,%eax   //令eax=1
+    132c:       03 45 00                add    0x0(%rbp),%eax   //eax+=rbp中的值也就是现在rsp所指的值
+    132f:       39 45 04                cmp    %eax,0x4(%rbp)   //比较eax和rbp地址增加四个字节后所对应的值
+                                                                  相等则跳转否则爆炸，这里的意思rbp加四个字节后                                                                   得到的值应该等于原先+eax 	
+    1332:       74 05                   je     1339 <phase_2+0x40>
+    1334:       e8 13 08 00 00          callq  1b4c <explode_bomb>
+    1339:       83 c3 01                add    $0x1,%ebx   //ebx=2现在
+    133c:       48 83 c5 04             add    $0x4,%rbp   //rbp向上移动四个字节
+  * 1340:       83 fb 06                cmp    $0x6,%ebx   //比较ebx和6不相等时跳转，到132a，从这里我们可以看出                                                              这是个循环
+    1343:       75 e5                   jne    132a <phase_2+0x31>
+    1345:       48 8b 44 24 18          mov    0x18(%rsp),%rax  //接下来这部分就是金丝雀的判断栈是否溢出部分
+    134a:       64 48 33 04 25 28 00    xor    %fs:0x28,%rax
+    1351:       00 00
+    1353:       74 05                   je     135a <phase_2+0x61>
+    1355:       e8 a6 fb ff ff          callq  f00 <__stack_chk_fail@plt>  
+    135a:       48 83 c4 28             add    $0x28,%rsp
+    135e:       5b                      pop    %rbx
+**表示循环内部
+~~~
+
+phase_3：
+
+~~~asm
+    0000000000001361 <phase_3>:
+    1361:       48 83 ec 28             sub    $0x28,%rsp
+    1365:       64 48 8b 04 25 28 00    mov    %fs:0x28,%rax  //设置金丝雀
+    136c:       00 00
+    136e:       48 89 44 24 18          mov    %rax,0x18(%rsp)
+    1373:       31 c0                   xor    %eax,%eax
+    1375:       48 8d 4c 24 0f          lea    0xf(%rsp),%rcx  //一个字节
+    137a:       48 8d 54 24 10          lea    0x10(%rsp),%rdx  //4个字节
+    137f:       4c 8d 44 24 14          lea    0x14(%rsp),%r8   //四个字节
+    1384:       48 8d 35 4b 18 00 00    lea    0x184b(%rip),%rsi        # 2bd6 <_IO_stdin_used+0x1c6>
+    138b:       e8 10 fc ff ff          callq  fa0 <__isoc99_sscanf@plt>   //这几个lea不太好理解
+    1390:       83 f8 02                cmp    $0x2,%eax   //函数的返回值和2比较如果eax-2>0时跳转，否则爆炸也就                                                              是说我们要输入>=2个数字
+    1393:       7f 05                   jg     139a <phase_3+0x39>
+    1395:       e8 b2 07 00 00          callq  1b4c <explode_bomb>
+    139a:       83 7c 24 10 07          cmpl   $0x7,0x10(%rsp)   //也就是rdx中存储的值
+    139f:       0f 87 02 01 00 00       ja     14a7 <phase_3+0x146> //如果大于7则跳转到那个地址处对应下面*号爆                                                                       炸，所以rdx中的值要<=7
+    13a5:       8b 54 24 10             mov    0x10(%rsp),%edx       //rdx中的值赋值到edx中
+    13a9:       48 8d 05 40 18 00 00    lea    0x1840(%rip),%rax        # 2bf0 <_IO_stdin_used+0x1e0>
+    13b0:       48 63 14 90             movslq (%rax,%rdx,4),%rdx   //rdx中的值经过寻址然后覆盖掉，并进行扩充
+    13b4:       48 01 d0                add    %rdx,%rax     //rax=rax初始+rdx中的值
+    13b7:       ff e0                   jmpq   *%rax   //将rax中的值当作地址跳转到这里，这里我们可以看出来是一个跳                                                          转表格式，下面也可以看到case有7个所以就是对应上面rdx<=7
+    13b9:       b8 63 00 00 00          mov    $0x63,%eax  //赋值
+    13be:       81 7c 24 14 dd 03 00    cmpl   $0x3dd,0x14(%rsp)  //比较r8中的值和989，所以r8中为989
+    13c5:       00
+    13c6:       0f 84 e5 00 00 00       je     14b1 <phase_3+0x150>   //如果相等跳转不等就爆炸，所以我们可以有                                                                         一组答案就是0  989
+    13cc:       e8 7b 07 00 00          callq  1b4c <explode_bomb>
+
+    13e7:       00
+    13e8:       0f 84 c3 00 00 00       je     14b1 <phase_3+0x150>
+    13ee:       e8 59 07 00 00          callq  1b4c <explode_bomb>
+    13f3:       b8 63 00 00 00          mov    $0x63,%eax
+    13f8:       e9 b4 00 00 00          jmpq   14b1 <phase_3+0x150>
+    13fd:       b8 6a 00 00 00          mov    $0x6a,%eax
+    1402:       81 7c 24 14 3c 03 00    cmpl   $0x33c,0x14(%rsp)
+    1409:       00
+    140a:       0f 84 a1 00 00 00       je     14b1 <phase_3+0x150>
+    1410:       e8 37 07 00 00          callq  1b4c <explode_bomb>
+    1415:       b8 6a 00 00 00          mov    $0x6a,%eax
+    141a:       e9 92 00 00 00          jmpq   14b1 <phase_3+0x150>
+    141f:       b8 6a 00 00 00          mov    $0x6a,%eax
+    1424:       83 7c 24 14 69          cmpl   $0x69,0x14(%rsp)
+    1429:       0f 84 82 00 00 00       je     14b1 <phase_3+0x150>
+    142f:       e8 18 07 00 00          callq  1b4c <explode_bomb>
+    1434:       b8 6a 00 00 00          mov    $0x6a,%eax
+    1439:       eb 76                   jmp    14b1 <phase_3+0x150>
+    143b:       b8 69 00 00 00          mov    $0x69,%eax
+    1440:       81 7c 24 14 6f 02 00    cmpl   $0x26f,0x14(%rsp)
+    1447:       00
+    1448:       74 67                   je     14b1 <phase_3+0x150>
+    144a:       e8 fd 06 00 00          callq  1b4c <explode_bomb>
+    144f:       b8 69 00 00 00          mov    $0x69,%eax
+    1454:       eb 5b                   jmp    14b1 <phase_3+0x150>
+    1456:       b8 6e 00 00 00          mov    $0x6e,%eax
+    145b:       81 7c 24 14 b6 03 00    cmpl   $0x3b6,0x14(%rsp)
+    1462:       00
+    1463:       74 4c                   je     14b1 <phase_3+0x150>
+    1465:       e8 e2 06 00 00          callq  1b4c <explode_bomb>
+    146a:       b8 6e 00 00 00          mov    $0x6e,%eax
+    146f:       eb 40                   jmp    14b1 <phase_3+0x150>
+    1471:       b8 64 00 00 00          mov    $0x64,%eax
+    1476:       81 7c 24 14 b3 03 00    cmpl   $0x3b3,0x14(%rsp)
+    147d:       00
+    147e:       74 31                   je     14b1 <phase_3+0x150>
+    1480:       e8 c7 06 00 00          callq  1b4c <explode_bomb>
+    1485:       b8 64 00 00 00          mov    $0x64,%eax
+    148a:       eb 25                   jmp    14b1 <phase_3+0x150>
+    148c:       b8 6b 00 00 00          mov    $0x6b,%eax
+    1491:       81 7c 24 14 da 03 00    cmpl   $0x3da,0x14(%rsp)
+    1498:       00
+    1499:       74 16                   je     14b1 <phase_3+0x150>
+    149b:       e8 ac 06 00 00          callq  1b4c <explode_bomb>
+    14a0:       b8 6b 00 00 00          mov    $0x6b,%eax
+    14a5:       eb 0a                   jmp    14b1 <phase_3+0x150>
+   *14a7:       e8 a0 06 00 00          callq  1b4c <explode_bomb>
+    14ac:       b8 78 00 00 00          mov    $0x78,%eax
+   *14b1:       3a 44 24 0f             cmp    0xf(%rsp),%al    
+    14b5:       74 05                   je     14bc <phase_3+0x15b>
+    14b7:       e8 90 06 00 00          callq  1b4c <explode_bomb>
+    14bc:       48 8b 44 24 18          mov    0x18(%rsp),%rax
+    14c1:       64 48 33 04 25 28 00    xor    %fs:0x28,%rax
+    14c8:       00 00
+    14ca:       74 05                   je     14d1 <phase_3+0x170>
+    14cc:       e8 2f fa ff ff          callq  f00 <__stack_chk_fail@plt>
+    14d1:       48 83 c4 28             add    $0x28,%rsp
+    14d5:       c3                      retq
+
+~~~
+
+phase_4
+
+~~~asm
+0000000000001514 <phase_4>:
+    1514:       48 83 ec 18             sub    $0x18,%rsp
+    1518:       64 48 8b 04 25 28 00    mov    %fs:0x28,%rax
+    151f:       00 00
+    1521:       48 89 44 24 08          mov    %rax,0x8(%rsp)   
+    1526:       31 c0                   xor    %eax,%eax    //经典操作设置金丝雀，并且置0
+    1528:       48 8d 4c 24 04          lea    0x4(%rsp),%rcx    
+    152d:       48 89 e2                mov    %rsp,%rdx
+    1530:       48 8d 35 36 19 00 00    lea    0x1936(%rip),%rsi        # 2e6d <array.3462+0x25d>
+    1537:       e8 64 fa ff ff          callq  fa0 <__isoc99_sscanf@plt>
+    153c:       83 f8 02                cmp    $0x2,%eax 
+    153f:       75 06                   jne    1547 <phase_4+0x33> //不相等跳转爆炸，所以eax为2，那么就是2个数
+    1541:       83 3c 24 0e             cmpl   $0xe,(%rsp)//rsp中的值-14<=0那么跳转，这里需要跳转因为要不会爆炸
+    1545:       76 05                   jbe    154c <phase_4+0x38>
+   *1547:       e8 00 06 00 00          callq  1b4c <explode_bomb>
+   *154c:       ba 0e 00 00 00          mov    $0xe,%edx  //edx=14
+    1551:       be 00 00 00 00          mov    $0x0,%esi  //esi=0
+    1556:       8b 3c 24                mov    (%rsp),%edi  //edi=（rsp）此处的值并且进行func的参数
+    1559:       e8 78 ff ff ff          callq  14d6 <func4>   //这里还需要看一下func4
+    155e:       85 c0                   test   %eax,%eax
+    1560:       75 07                   jne    1569 <phase_4+0x55>  //所以函数的返回值必须是0
+    1562:       83 7c 24 04 00          cmpl   $0x0,0x4(%rsp)  //rcx中的值必须是0，否则爆炸
+    1567:       74 05                   je     156e <phase_4+0x5a>  
+  * 1569:       e8 de 05 00 00          callq  1b4c <explode_bomb>
+    156e:       48 8b 44 24 08          mov    0x8(%rsp),%rax
+    1573:       64 48 33 04 25 28 00    xor    %fs:0x28,%rax
+    157a:       00 00
+    157c:       74 05                   je     1583 <phase_4+0x6f>
+    157e:       e8 7d f9 ff ff          callq  f00 <__stack_chk_fail@plt>
+    1583:       48 83 c4 18             add    $0x18,%rsp
+    1587:       c3                      retq
+
+00000000000014d6 <func4>:
+    14d6:       48 83 ec 08             sub    $0x8,%rsp
+    14da:       89 d0                   mov    %edx,%eax  //eax=edx=14
+    14dc:       29 f0                   sub    %esi,%eax  //eax-=esi
+    14de:       89 c1                   mov    %eax,%ecx  //ecx=eax
+    14e0:       c1 e9 1f                shr    $0x1f,%ecx  //逻辑右移ecx31，也就是只剩下符号位
+    14e3:       01 c8                   add    %ecx,%eax   //eax+=ecx原来的符号位
+    14e5:       d1 f8                   sar    %eax  //eax算术右移一位，这里其实就是找中间值
+    14e7:       8d 0c 30                lea    (%rax,%rsi,1),%ecx  //ecx存储rax+rsi所代表的地址
+    14ea:       39 f9                   cmp    %edi,%ecx  //ecx-edi<=0跳转，中间值小于等于目标值就跳转
+    14ec:       7e 0c                   jle    14fa <func4+0x24>   
+    14ee:       8d 51 ff                lea    -0x1(%rcx),%edx  //否则rcx-1所指的地址存在edx中
+    14f1:       e8 e0 ff ff ff          callq  14d6 <func4>
+    14f6:       01 c0                   add    %eax,%eax   //eax*=2
+    14f8:       eb 15                   jmp    150f <func4+0x39>
+   *14fa:       b8 00 00 00 00          mov    $0x0,%eax
+    14ff:       39 f9                   cmp    %edi,%ecx
+    1501:       7d 0c                   jge    150f <func4+0x39>    //大于等于mid就跳转尾部返回
+    1503:       8d 71 01                lea    0x1(%rcx),%esi
+    1506:       e8 cb ff ff ff          callq  14d6 <func4>
+    150b:       8d 44 00 01             lea    0x1(%rax,%rax,1),%eax
+   *150f:       48 83 c4 08             add    $0x8,%rsp
+    1513:       c3                      retq
+
+~~~
+
+phase_5
+
+~~~asm
+0000000000001588 <phase_5>:
+    1588:       53                      push   %rbx
+    1589:       48 83 ec 10             sub    $0x10,%rsp
+    158d:       48 89 fb                mov    %rdi,%rbx   //rdi中的值存入rbx
+    1590:       64 48 8b 04 25 28 00    mov    %fs:0x28,%rax
+    1597:       00 00
+    1599:       48 89 44 24 08          mov    %rax,0x8(%rsp)
+    159e:       31 c0                   xor    %eax,%eax
+    15a0:       e8 8a 02 00 00          callq  182f <string_length>
+    15a5:       83 f8 06                cmp    $0x6,%eax
+    15a8:       74 05                   je     15af <phase_5+0x27> //必须跳转否则爆炸，也就是返回字符串长度为6
+    15aa:       e8 9d 05 00 00          callq  1b4c <explode_bomb>
+   *15af:       b8 00 00 00 00          mov    $0x0,%eax    //eax赋值为0
++2c 15b4:       0f b6 14 03             movzbl (%rbx,%rax,1),%edx   //从地址rbx+rax中取低八位数字存到edx中
+    15b8:       83 e2 0f                and    $0xf,%edx  //低四位和1进行与运算高位全部置为0
+    15bb:       48 8d 0d 4e 16 00 00    lea    0x164e(%rip),%rcx        # 2c10 <array.3462>
+    15c2:       0f b6 14 11             movzbl (%rcx,%rdx,1),%edx  //从一个地址读取一个字节存入edx
+    15c6:       88 54 04 01             mov    %dl,0x1(%rsp,%rax,1)  //将上一步操作的低八位放在后面所指向的地址
+    15ca:       48 83 c0 01             add    $0x1,%rax  //rax++
+    15ce:       48 83 f8 06             cmp    $0x6,%rax  //rax和6比较
+    15d2:       75 e0                   jne    15b4 <phase_5+0x2c>  //经历六轮循环
+    15d4:       c6 44 24 07 00          movb   $0x0,0x7(%rsp)  //
+    15d9:       48 8d 7c 24 01          lea    0x1(%rsp),%rdi
+    15de:       48 8d 35 fa 15 00 00    lea    0x15fa(%rip),%rsi        # 2bdf <_IO_stdin_used+0x1cf>
+    15e5:       e8 63 02 00 00          callq  184d <strings_not_equal>
+    15ea:       85 c0                   test   %eax,%eax    //返回值不为0那么就爆炸，也就是两个字符串需要相等
+    15ec:       74 05                   je     15f3 <phase_5+0x6b>
+    15ee:       e8 59 05 00 00          callq  1b4c <explode_bomb>
++6b 15f3:       48 8b 44 24 08          mov    0x8(%rsp),%rax
+    15f8:       64 48 33 04 25 28 00    xor    %fs:0x28,%rax
+    15ff:       00 00
+    1601:       74 05                   je     1608 <phase_5+0x80>
+    1603:       e8 f8 f8 ff ff          callq  f00 <__stack_chk_fail@plt>
+    1608:       48 83 c4 10             add    $0x10,%rsp
+    160c:       5b                      pop    %rbx
+    160d:       c3                      retq
+
+000000000000182f <string_length>:
+    182f:       80 3f 00                cmpb   $0x0,(%rdi)  
+    1832:       74 13                   je     1847 <string_length+0x18>
+    1834:       b8 00 00 00 00          mov    $0x0,%eax
+   *1839:       48 83 c7 01             add    $0x1,%rdi  //rdi++
+    183d:       83 c0 01                add    $0x1,%eax  //eax++
+    1840:       80 3f 00                cmpb   $0x0,(%rdi)  //rdi和0比较不相等就跳转
+    1843:       75 f4                   jne    1839 <string_length+0xa> 
+    1845:       f3 c3                   repz retq
+   *1847:       b8 00 00 00 00          mov    $0x0,%eax
+    184c:       c3                      retq
+
+
+~~~
+
+phase_6
+
+~~~asm
+000000000000160e <phase_6>:
+    160e:       41 55                   push   %r13
+    1610:       41 54                   push   %r12
+    1612:       55                      push   %rbp
+    1613:       53                      push   %rbx
+    1614:       48 83 ec 68             sub    $0x68,%rsp
+    1618:       64 48 8b 04 25 28 00    mov    %fs:0x28,%rax
+    161f:       00 00
+    1621:       48 89 44 24 58          mov    %rax,0x58(%rsp)
+    1626:       31 c0                   xor    %eax,%eax
+    1628:       49 89 e4                mov    %rsp,%r12
+    162b:       48 89 e6                mov    %rsp,%rsi
+    162e:       e8 55 05 00 00          callq  1b88 <read_six_numbers>
+    1633:       41 bd 00 00 00 00       mov    $0x0,%r13d  
+    1639:       4c 89 e5                mov    %r12,%rbp    
+    163c:       41 8b 04 24             mov    (%r12),%eax
+    1640:       83 e8 01                sub    $0x1,%eax
+    1643:       83 f8 05                cmp    $0x5,%eax 
+    1646:       76 05                   jbe    164d <phase_6+0x3f>  //必须小于等于否则爆炸
+    1648:       e8 ff 04 00 00          callq  1b4c <explode_bomb>
+ *  164d:       41 83 c5 01             add    $0x1,%r13d
+    1651:       41 83 fd 06             cmp    $0x6,%r13d     
+    1655:       74 3d                   je     1694 <phase_6+0x86>  
+    1657:       44 89 eb                mov    %r13d,%ebx   
+    165a:       48 63 c3                movslq %ebx,%rax
+    165d:       8b 04 84                mov    (%rsp,%rax,4),%eax  //第i个输入
+    1660:       39 45 00                cmp    %eax,0x0(%rbp)   //检查是否重复重复爆炸
+    1663:       75 05                   jne    166a <phase_6+0x5c>
+    1665:       e8 e2 04 00 00          callq  1b4c <explode_bomb>
+    166a:       83 c3 01                add    $0x1,%ebx
+    166d:       83 fb 05                cmp    $0x5,%ebx
+    1670:       7e e8                   jle    165a <phase_6+0x4c>
+    1672:       49 83 c4 04             add    $0x4,%r12
+    1676:       eb c1                   jmp    1639 <phase_6+0x2b>
+    1678:       48 8b 52 08             mov    0x8(%rdx),%rdx
+    167c:       83 c0 01                add    $0x1,%eax
+    167f:       39 c8                   cmp    %ecx,%eax
+    1681:       75 f5                   jne    1678 <phase_6+0x6a>
+    1683:       48 89 54 74 20          mov    %rdx,0x20(%rsp,%rsi,2)
+    1688:       48 83 c6 04             add    $0x4,%rsi
+    168c:       48 83 fe 18             cmp    $0x18,%rsi
+    1690:       75 07                   jne    1699 <phase_6+0x8b>
+    1692:       eb 1b                   jmp    16af <phase_6+0xa1>
+  * 1694:       be 00 00 00 00          mov    $0x0,%esi
+    1699:       8b 0c 34                mov    (%rsp,%rsi,1),%ecx
+    169c:       b8 01 00 00 00          mov    $0x1,%eax
+    16a1:       48 8d 15 88 2b 20 00    lea    0x202b88(%rip),%rdx        # 204230 <node1>
+    16a8:       83 f9 01                cmp    $0x1,%ecx
+    16ab:       7f cb                   jg     1678 <phase_6+0x6a>
+    16ad:       eb d4                   jmp    1683 <phase_6+0x75>
+    16af:       48 8b 5c 24 20          mov    0x20(%rsp),%rbx
+    16b4:       48 8d 44 24 20          lea    0x20(%rsp),%rax
+    16b9:       48 8d 74 24 48          lea    0x48(%rsp),%rsi
+    16be:       48 89 d9                mov    %rbx,%rcx
+    16c1:       48 8b 50 08             mov    0x8(%rax),%rdx
+    16c5:       48 89 51 08             mov    %rdx,0x8(%rcx)
+    16c9:       48 83 c0 08             add    $0x8,%rax
+    16cd:       48 89 d1                mov    %rdx,%rcx
+    16d0:       48 39 f0                cmp    %rsi,%rax
+    16d3:       75 ec                   jne    16c1 <phase_6+0xb3>
+    16d5:       48 c7 42 08 00 00 00    movq   $0x0,0x8(%rdx)
+    16dc:       00
+    16dd:       bd 05 00 00 00          mov    $0x5,%ebp
+    16e2:       48 8b 43 08             mov    0x8(%rbx),%rax    
+    16e6:       8b 00                   mov    (%rax),%eax       //选择下一个链表的操作
+    16e8:       39 03                   cmp    %eax,(%rbx)
+    16ea:       7e 05                   jle    16f1 <phase_6+0xe3>   //这句话就是说node必须是降序排列的，否则就                                                                          会爆炸
+    16ec:       e8 5b 04 00 00          callq  1b4c <explode_bomb>
+    16f1:       48 8b 5b 08             mov    0x8(%rbx),%rbx
+    16f5:       83 ed 01                sub    $0x1,%ebp
+    16f8:       75 e8                   jne    16e2 <phase_6+0xd4>
+    16fa:       48 8b 44 24 58          mov    0x58(%rsp),%rax
+    16ff:       64 48 33 04 25 28 00    xor    %fs:0x28,%rax
+    1706:       00 00
+    1708:       74 05                   je     170f <phase_6+0x101>
+    170a:       e8 f1 f7 ff ff          callq  f00 <__stack_chk_fail@plt>
+    170f:       48 83 c4 68             add    $0x68,%rsp
+    1713:       5b                      pop    %rbx
+    1714:       5d                      pop    %rbp
+    1715:       41 5c                   pop    %r12
+    1717:       41 5d                   pop    %r13
+    1719:       c3                      retq
+
+~~~
+
+### arm版本
+
+phase_1
+
+~~~asm
+0000000000401028 <phase_1>:
+  401028:       a9bf7bfd        stp     x29, x30, [sp, #-16]!
+  40102c:       910003fd        mov     x29, sp
+  401030:       b0000001        adrp    x1, 402000 <submitr+0x440>
+  401034:       9118c021        add     x1, x1, #0x630
+  401038:       94000148        bl      401558 <strings_not_equal>
+  40103c:       35000060        cbnz    w0, 401048 <phase_1+0x20>
+  401040:       a8c17bfd        ldp     x29, x30, [sp], #16    //还原栈帧
+  401044:       d65f03c0        ret  
+  401048:       94000205        bl      40185c <explode_bomb>
+  40104c:       17fffffd        b       401040 <phase_1+0x18>
+~~~
+
+phase_2
+
+~~~asm
+0000000000401050 <phase_2>:
+  401050:       a9bc7bfd        stp     x29, x30, [sp, #-64]! 
+  401054:       910003fd        mov     x29, sp       
+  401058:       a90153f3        stp     x19, x20, [sp, #16]   //从低到高依次是29 30 19 20
+  40105c:       9100a3a1        add     x1, x29, #0x28    //x1=x29+40byte
+  401060:       9400020e        bl      401898 <read_six_numbers>
+  401064:       b9402ba0        ldr     w0, [x29, #40]    //也就是x1那处的字节
+  401068:       35000080        cbnz    w0, 401078 <phase_2+0x28>    //w0！=0时跳转爆炸，也就是第一个数字为0
+  40106c:       b9402fa0        ldr     w0, [x29, #44]   //第二个数字
+  401070:       7100041f        cmp     w0, #0x1
+  401074:       54000040        b.eq    40107c <phase_2+0x2c>  //相等跳转否则顺序执行爆炸，则第二个数字也得是1
+  401078:       940001f9        bl      40185c <explode_bomb>
+  40107c:       9100a3b3        add     x19, x29, #0x28   //第一个数字的位置存放在x19中
+  401080:       91004274        add     x20, x19, #0x10   //x20中存放x19+16byte后的位置
+  401084:       14000004        b       401094 <phase_2+0x44>
+  401088:       91001273        add     x19, x19, #0x4  //跳转到这里19+4，到20的位置
+  40108c:       eb14027f        cmp     x19, x20  //再次比较19和20相等时可以结束循环，不相等重复操作，而循环次数是                                                     16/4=4次
+  401090:       54000120        b.eq    4010b4 <phase_2+0x64>  // b.none
+  401094:       b9400260        ldr     w0, [x19]   //x19中的值到w0中，也就是第一个数字
+  401098:       b9400661        ldr     w1, [x19, #4]  //第二个数字到w1
+  40109c:       0b010000        add     w0, w0, w1   //w0更新为原先加w1
+  4010a0:       b9400a61        ldr     w1, [x19, #8]  //第三个数字存放在w1中
+  4010a4:       6b00003f        cmp     w1, w0   //比较如果相等才可以跳转，否则顺序执行产生爆炸，所以第三个数字是1
+  4010a8:       54ffff00        b.eq    401088 <phase_2+0x38>  // b.none
+  4010ac:       940001ec        bl      40185c <explode_bomb>
+  4010b0:       17fffff6        b       401088 <phase_2+0x38>
+  4010b4:       a94153f3        ldp     x19, x20, [sp, #16]   //还原栈帧
+  4010b8:       a8c47bfd        ldp     x29, x30, [sp], #64
+  4010bc:       d65f03c0        ret
+
+~~~
+
+phase_3
+
+~~~asm
+00000000004010c0 <phase_3>:
+  4010c0:       a9be7bfd        stp     x29, x30, [sp, #-32]!  //32字节的空间
+  4010c4:       910003fd        mov     x29, sp
+  4010c8:       910063a3        add     x3, x29, #0x18  //x29+24byte到x3
+  4010cc:       910073a2        add     x2, x29, #0x1c  //x29+28字节到x2
+  4010d0:       b0000001        adrp    x1, 402000 <submitr+0x440>  
+  4010d4:       9119a021        add     x1, x1, #0x668   //x1=0x402668
+  4010d8:       97ffff26        bl      400d70 <__isoc99_sscanf@plt>  //调用sscanf
+  4010dc:       7100041f        cmp     w0, #0x1
+  4010e0:       5400026d        b.le    40112c <phase_3+0x6c>   //小于等于则爆炸，所以输入要求要大于1个数字
+  4010e4:       b9401fa0        ldr     w0, [x29, #28]  //x29+28机x2方中的数放到w0中
+  4010e8:       71000c1f        cmp     w0, #0x3  //比较w0和三，我们就先看等于三的情况
+  4010ec:       540003e0        b.eq    401168 <phase_3+0xa8>  // b.none
+  4010f0:       5400022d        b.le    401134 <phase_3+0x74>
+  4010f4:       528029e1        mov     w1, #0x14f                      // #335
+  4010f8:       7100141f        cmp     w0, #0x5
+  4010fc:       540002a0        b.eq    401150 <phase_3+0x90>  // b.none
+  401100:       528060e1        mov     w1, #0x307                      // #775
+  401104:       5400026b        b.lt    401150 <phase_3+0x90>  // b.tstop
+  401108:       52806601        mov     w1, #0x330                      // #816
+  40110c:       7100181f        cmp     w0, #0x6
+  401110:       54000200        b.eq    401150 <phase_3+0x90>  // b.none
+  401114:       52802661        mov     w1, #0x133                      // #307
+  401118:       71001c1f        cmp     w0, #0x7
+  40111c:       540001a0        b.eq    401150 <phase_3+0x90>  // b.none
+  401120:       940001cf        bl      40185c <explode_bomb>
+  401124:       52800001        mov     w1, #0x0                        // #0
+  401128:       1400000a        b       401150 <phase_3+0x90>
+  40112c:       940001cc        bl      40185c <explode_bomb>  
+  401130:       17ffffed        b       4010e4 <phase_3+0x24>
+  401134:       52807841        mov     w1, #0x3c2                      // #962
+  401138:       7100041f        cmp     w0, #0x1
+  40113c:       540000a0        b.eq    401150 <phase_3+0x90>  // b.none
+  401140:       52806721        mov     w1, #0x339                      // #825
+  401144:       5400006c        b.gt    401150 <phase_3+0x90>
+  401148:       52807b21        mov     w1, #0x3d9                      // #985
+  40114c:       35fffea0        cbnz    w0, 401120 <phase_3+0x60>
+  401150:       b9401ba0        ldr     w0, [x29, #24]  //x29+24即x3存储的位置的值放在w0中
+  401154:       6b01001f        cmp     w0, w1  //此时w0和w1必须想当否则就会爆炸，也就是说x3处存放的值需为172
+  401158:       54000040        b.eq    401160 <phase_3+0xa0>  // b.none
+  40115c:       940001c0        bl      40185c <explode_bomb>
+  401160:       a8c27bfd        ldp     x29, x30, [sp], #32
+  401164:       d65f03c0        ret
+  401168:       52801581        mov     w1, #0xac                       // w1=#172（w0==3）
+  40116c:       17fffff9        b       401150 <phase_3+0x90>
+~~~
+
+phase_4
+
+~~~asm
+00000000004011c4 <phase_4>:
+  4011c4:       a9be7bfd        stp     x29, x30, [sp, #-32]!  //开辟空间32byte，从低到高放29 30
+  4011c8:       910003fd        mov     x29, sp    //x29保存当前地址
+  4011cc:       910063a3        add     x3, x29, #0x18  //x29+24byte位置放置x3
+  4011d0:       910073a2        add     x2, x29, #0x1c  //x3上面放x2
+  4011d4:       b0000001        adrp    x1, 402000 <submitr+0x440>   
+  4011d8:       9119a021        add     x1, x1, #0x668   
+  4011dc:       97fffee5        bl      400d70 <__isoc99_sscanf@plt> 
+  4011e0:       7100081f        cmp     w0, #0x2   //说明必须输入两个值
+  4011e4:       54000081        b.ne    4011f4 <phase_4+0x30>  // b.any
+  4011e8:       b9401fa0        ldr     w0, [x29, #28]  //x2的位置中的数放到w0中
+  4011ec:       7100381f        cmp     w0, #0xe  //比较也就是说x2处必须是<=14
+  4011f0:       54000049        b.ls    4011f8 <phase_4+0x34>  // b.plast  
+  4011f4:       9400019a        bl      40185c <explode_bomb>
+  4011f8:       528001c2        mov     w2, #0xe                         // #14
+  4011fc:       52800001        mov     w1, #0x0                        // #0
+  401200:       b9401fa0        ldr     w0, [x29, #28]  //x2中的数放到w0中然后，作为第一个参数，执行func4
+  401204:       97ffffdb        bl      401170 <func4>
+  401208:       7100141f        cmp     w0, #0x5     //说明函数返回值需要是5而
+  40120c:       54000081        b.ne    40121c <phase_4+0x58>  // b.any
+  401210:       b9401ba0        ldr     w0, [x29, #24]    //x3也需要是5
+  401214:       7100141f        cmp     w0, #0x5    
+  401218:       54000040        b.eq    401220 <phase_4+0x5c>  // b.none
+  40121c:       94000190        bl      40185c <explode_bomb>
+  401220:       a8c27bfd        ldp     x29, x30, [sp], #32
+  401224:       d65f03c0        ret
+0000000000401170 <func4>:  //一眼看出来递归调用依然是取一种最简单的情况	
+  401170:       a9bf7bfd        stp     x29, x30, [sp, #-16]!  
+  401174:       910003fd        mov     x29, sp 
+  401178:       4b010043        sub     w3, w2, w1   //w3=w2-w1
+  40117c:       0b437c63        add     w3, w3, w3, lsr #31  //w3>0不操作如果<0+1操作
+  401180:       0b830423        add     w3, w1, w3, asr #1   //w3=（w3）/2+w1   //其实就是取中间的数
+  401184:       6b00007f        cmp     w3, w0  //比较w3和w0，w3-w0>0,就跳转
+  401188:       540000cc        b.gt    4011a0 <func4+0x30>
+  40118c:       52800001        mov     w1, #0x0                        // #0
+  401190:       5400010b        b.lt    4011b0 <func4+0x40>  // b.tstop   //<=的情况
+  401194:       2a0103e0        mov     w0, w1        //这部分讲就是将下界移动到w0中进行返回
+  401198:       a8c17bfd        ldp     x29, x30, [sp], #16
+  40119c:       d65f03c0        ret
+  4011a0:       51000462        sub     w2, w3, #0x1  //w2=w3-	1  也就是说这是个二分查找中间值比所找的值大，所                                                         以右边界减小到原来中间值-1
+  4011a4:       97fffff3        bl      401170 <func4> 
+  4011a8:       531f7801        lsl     w1, w0, #1   //只进行*2操作
+  4011ac:       17fffffa        b       401194 <func4+0x24>   //  b只进行跳转程序，不会返回原来程序
+  4011b0:       11000461        add     w1, w3, #0x1   //左边界到原来的中间值+1
+  4011b4:       97ffffef        bl      401170 <func4>
+  4011b8:       531f7800        lsl     w0, w0, #1
+  4011bc:       11000401        add     w1, w0, #0x1  //对查找的结果进行*2+1
+  4011c0:       17fffff5        b       401194 <func4+0x24>
+~~~
+
+phase_5
+
+~~~asm
+0000000000401228 <phase_5>:
+  401228:       a9bd7bfd        stp     x29, x30, [sp, #-48]!  //开辟48byte
+  40122c:       910003fd        mov     x29, sp   //存入29 
+  401230:       f9000bf3        str     x19, [sp, #16]   //x19中内容存入sp+16字节位置
+  401234:       aa0003f3        mov     x19, x0   //将x0中内容存放到x19中
+  401238:       940000bd        bl      40152c <string_length>    
+  40123c:       7100181f        cmp     w0, #0x6  //说明要输入6个字符
+  401240:       540002a1        b.ne    401294 <phase_5+0x6c>  // b.any    
+  401244:       d2800000        mov     x0, #0x0                  // #0
+  401248:       9100a3a3        add     x3, x29, #0x28     //x29+40byte的地址存入x3
+  40124c:       b0000002        adrp    x2, 402000 <submitr+0x440>
+  401250:       91188042        add     x2, x2, #0x620  //x2=402620
+  401254:       38606a61        ldrb    w1, [x19, x0]  //存放的第一个字符赋值给w1
+  401258:       12000c21        and     w1, w1, #0xf   //取w1低四位 
+  40125c:       3861c841        ldrb    w1, [x2, w1, sxtw]  //x2+w1地址处的字符再赋值给w1
+  401260:       38236801        strb    w1, [x0, x3]  //w1再存放到x3所指地址的第一个位置
+  401264:       91000400        add     x0, x0, #0x1  //x0+1
+  401268:       f100181f        cmp     x0, #0x6  //说明循环6次
+  40126c:       54ffff41        b.ne    401254 <phase_5+0x2c>  // b.any
+  401270:       3900bbbf        strb    wzr, [x29, #46]   //给写入后的字符串加上"\0"
+  401274:       b0000001        adrp    x1, 402000 <submitr+0x440>
+  401278:       9119c021        add     x1, x1, #0x670   //x1=402670
+  40127c:       9100a3a0        add     x0, x29, #0x28   //x0写入刚才计算得到的字符串
+  401280:       940000b6        bl      401558 <strings_not_equal>    //必须相等否则跳转爆炸 
+  401284:       350000c0        cbnz    w0, 40129c <phase_5+0x74>
+  401288:       f9400bf3        ldr     x19, [sp, #16]
+  40128c:       a8c37bfd        ldp     x29, x30, [sp], #48
+  401290:       d65f03c0        ret
+  401294:       94000172        bl      40185c <explode_bomb>
+  401298:       17ffffeb        b       401244 <phase_5+0x1c>
+  40129c:       94000170        bl      40185c <explode_bomb>
+  4012a0:       17fffffa        b       401288 <phase_5+0x60>
+
+~~~
+
+phase_6
+
+~~~asm
+  00000000004012a4 <phase_6>:
+  4012a4:       a9b87bfd        stp     x29, x30, [sp, #-128]!
+  4012a8:       910003fd        mov     x29, sp
+  4012ac:       a90153f3        stp     x19, x20, [sp, #16]
+  4012b0:       f90013f5        str     x21, [sp, #32]
+  4012b4:       9101a3a1        add     x1, x29, #0x68
+  4012b8:       94000178        bl      401898 <read_six_numbers>     //说明读取了六个数字
+  4012bc:       d2800015        mov     x21, #0x0                       // #0
+  4012c0:       9101a3b4        add     x20, x29, #0x68  //x29+104byte的地址存放在x20中
+  4012c4:       1400000d        b       4012f8 <phase_6+0x54>
+  4012c8:       94000165        bl      40185c <explode_bomb>
+  4012cc:       1400000f        b       401308 <phase_6+0x64>
+  4012d0:       11000673        add     w19, w19, #0x1
+  4012d4:       7100167f        cmp     w19, #0x5
+  4012d8:       540000ec        b.gt    4012f4 <phase_6+0x50>
+  4012dc:       b8757a81        ldr     w1, [x20, x21, lsl #2]
+  4012e0:       b873da80        ldr     w0, [x20, w19, sxtw #2]
+  4012e4:       6b00003f        cmp     w1, w0
+  4012e8:       54ffff41        b.ne    4012d0 <phase_6+0x2c>  // b.any
+  4012ec:       9400015c        bl      40185c <explode_bomb>
+  4012f0:       17fffff8        b       4012d0 <phase_6+0x2c>
+  4012f4:       910006b5        add     x21, x21, #0x1
+  4012f8:       b8757a80        ldr     w0, [x20, x21, lsl #2]
+  4012fc:       51000400        sub     w0, w0, #0x1
+  401300:       7100141f        cmp     w0, #0x5
+  401304:       54fffe28        b.hi    4012c8 <phase_6+0x24>  // b.pmore
+  401308:       110006b3        add     w19, w21, #0x1
+  40130c:       f10016bf        cmp     x21, #0x5
+  401310:       54fffe61        b.ne    4012dc <phase_6+0x38>  // b.any
+  401314:       d2800000        mov     x0, #0x0                        // #0
+  401318:       9101a3a2        add     x2, x29, #0x68
+  40131c:       528000e3        mov     w3, #0x7                        // #7
+  401320:       b8607841        ldr     w1, [x2, x0, lsl #2]
+  401324:       4b010061        sub     w1, w3, w1
+  401328:       b8207841        str     w1, [x2, x0, lsl #2]
+  40132c:       91000400        add     x0, x0, #0x1
+  401330:       f100181f        cmp     x0, #0x6
+  401334:       54ffff61        b.ne    401320 <phase_6+0x7c>  // b.any
+  401338:       d2800003        mov     x3, #0x0                        // #0
+  40133c:       9101a3a6        add     x6, x29, #0x68
+  401340:       f00000e4        adrp    x4, 420000 <strlen@GLIBC_2.17>
+  401344:       9100e3a5        add     x5, x29, #0x38
+  401348:       14000009        b       40136c <phase_6+0xc8>
+  40134c:       f9400421        ldr     x1, [x1, #8]
+  401350:       11000400        add     w0, w0, #0x1
+  401354:       6b02001f        cmp     w0, w2
+  401358:       54ffffa1        b.ne    40134c <phase_6+0xa8>  // b.any
+  40135c:       f82378a1        str     x1, [x5, x3, lsl #3]
+  401360:       91000463        add     x3, x3, #0x1
+  401364:       f100187f        cmp     x3, #0x6
+  401368:       540000e0        b.eq    401384 <phase_6+0xe0>  // b.none
+  40136c:       b86378c2        ldr     w2, [x6, x3, lsl #2]
+  401370:       52800020        mov     w0, #0x1                        // #1
+  401374:       91044081        add     x1, x4, #0x110
+  401378:       6b00005f        cmp     w2, w0
+  40137c:       54fffe8c        b.gt    40134c <phase_6+0xa8>
+  401380:       17fffff7        b       40135c <phase_6+0xb8>
+  401384:       f9401fb3        ldr     x19, [x29, #56]
+  401388:       f94023a0        ldr     x0, [x29, #64]
+  40138c:       f9000660        str     x0, [x19, #8]
+  401390:       f94027a1        ldr     x1, [x29, #72]
+  401394:       f9000401        str     x1, [x0, #8]
+  401398:       f9402ba0        ldr     x0, [x29, #80]
+  40139c:       f9000420        str     x0, [x1, #8]
+  4013a0:       f9402fa1        ldr     x1, [x29, #88]
+  4013a4:       f9000401        str     x1, [x0, #8]
+  4013a8:       f94033a0        ldr     x0, [x29, #96]
+  4013ac:       f9000420        str     x0, [x1, #8]
+  4013b0:       f900041f        str     xzr, [x0, #8]
+  4013b4:       528000b4        mov     w20, #0x5                       // #5
+  4013b8:       14000004        b       4013c8 <phase_6+0x124>
+  4013bc:       f9400673        ldr     x19, [x19, #8]
+  4013c0:       71000694        subs    w20, w20, #0x1
+  4013c4:       54000100        b.eq    4013e4 <phase_6+0x140>  // b.none
+  4013c8:       f9400660        ldr     x0, [x19, #8]
+  4013cc:       b9400261        ldr     w1, [x19]
+  4013d0:       b9400000        ldr     w0, [x0]
+  4013d4:       6b00003f        cmp     w1, w0
+  4013d8:       54ffff2a        b.ge    4013bc <phase_6+0x118>  // b.tcont
+  4013dc:       94000120        bl      40185c <explode_bomb>
+  4013e0:       17fffff7        b       4013bc <phase_6+0x118>
+  4013e4:       a94153f3        ldp     x19, x20, [sp, #16]
+  4013e8:       f94013f5        ldr     x21, [sp, #32]
+  4013ec:       a8c87bfd        ldp     x29, x30, [sp], #128
+  4013f0:       d65f03c0        ret
+~~~
+
+
+
+### buffer
+
+重定位（Relocation）
+
+目标：不注入新代码，只覆盖 `getbuf()` 的返回地址，让它跳到现有函数 `touch1()`。
+
+关键：
+
+用 `objdump -d ctarget` 找出 `touch1` 的入口地址。
+
+计算小端字节序，并在溢出 “刚好到返回地址” 的位置写入这 8 字节地址。
+
+运行 `./hex2raw` 生成原始字节串，再喂给 `./ctarget`，观察 “Touch1!” 输出来验证。
+
+~~~asm
+00000000004018a9 <getbuf>:
+  4018a9:       48 83 ec 28             sub    $0x28,%rsp   //分配了40byte的空间
+  4018ad:       48 89 e7                mov    %rsp,%rdi
+  4018b0:       e8 ac 02 00 00          callq  401b61 <Gets>  //调用Get函数
+  4018b5:       b8 01 00 00 00          mov    $0x1,%eax
+  4018ba:       48 83 c4 28             add    $0x28,%rsp
+  4018be:       c3                      retq
+
+00000000004018bf <touch1>:   //得到了touch1 的地址
+  4018bf:       48 83 ec 08             sub    $0x8,%rsp
+  4018c3:       48 c1 ec 04             shr    $0x4,%rsp
+  4018c7:       48 c1 e4 04             shl    $0x4,%rsp
+  4018cb:       c7 05 27 2c 20 00 01    movl   $0x1,0x202c27(%rip)        # 6044fc <vlevel>
+  4018d2:       00 00 00
+  4018d5:       48 8d 3d 48 19 00 00    lea    0x1948(%rip),%rdi        # 403224 <_IO_stdin_used+0x314>
+  4018dc:       e8 df f3 ff ff          callq  400cc0 <puts@plt>
+  4018e1:       bf 01 00 00 00          mov    $0x1,%edi
+  4018e6:       e8 d8 04 00 00          callq  401dc3 <validate>
+  4018eb:       bf 00 00 00 00          mov    $0x0,%edi
+  4018f0:       e8 3b f5 ff ff          callq  400e30 <exit@plt>
+~~~
+
+**指定参数**
+
+第二阶段涉及将少量代码作为漏洞利用字符串的一部分注入。
+
+在文件 `ctarget` 中，有一个名为 `touch2` 的函数的代码
+
+~~~c
+1 void touch2(unsigned val)  //注意参数
+2 {
+3     vlevel = 2; /* Part of validation protocol */
+4     if (val == cookie) {
+5         printf("Touch2!: You called touch2(0x%.8x)\n", val);
+6         validate(2);
+7     } else {
+8         printf("Misfire: You called touch2(0x%.8x)\n", val);
+9         fail(2);
+10     }
+11     exit(0);
+12 }
+~~~
+
+cookie：0x43227a88
+
+~~~asm
+00000000004018f5 <touch2>:
+  4018f5:       48 83 ec 08             sub    $0x8,%rsp
+  4018f9:       89 fa                   mov    %edi,%edx
+  4018fb:       48 c1 ec 04             shr    $0x4,%rsp
+  4018ff:       48 c1 e4 04             shl    $0x4,%rsp
+  401903:       c7 05 ef 3b 20 00 02    movl   $0x2,0x203bef(%rip)        # 6054fc <vlevel>
+  40190a:       00 00 00
+  40190d:       39 3d f1 3b 20 00       cmp    %edi,0x203bf1(%rip)        # 605504 <cookie>
+  401913:       75 22                   jne    401937 <touch2+0x42>
+  401915:       48 8d 35 5c 1a 00 00    lea    0x1a5c(%rip),%rsi        # 403378 <_IO_stdin_used+0x338>
+  40191c:       bf 01 00 00 00          mov    $0x1,%edi
+  401921:       b8 00 00 00 00          mov    $0x0,%eax
+  401926:       e8 b5 f4 ff ff          callq  400de0 <__printf_chk@plt>
+  40192b:       bf 02 00 00 00          mov    $0x2,%edi
+  401930:       e8 af 05 00 00          callq  401ee4 <validate>
+  401935:       eb 20                   jmp    401957 <touch2+0x62>
+  401937:       48 8d 35 62 1a 00 00    lea    0x1a62(%rip),%rsi        # 4033a0 <_IO_stdin_used+0x360>
+  40193e:       bf 01 00 00 00          mov    $0x1,%edi
+  401943:       b8 00 00 00 00          mov    $0x0,%eax
+  401948:       e8 93 f4 ff ff          callq  400de0 <__printf_chk@plt>
+  40194d:       bf 02 00 00 00          mov    $0x2,%edi
+  401952:       e8 5a 06 00 00          callq  401fb1 <fail>
+  401957:       bf 00 00 00 00          mov    $0x0,%edi
+  40195c:       e8 cf f4 ff ff          callq  400e30 <exit@plt>
+~~~
+
+**Level 3**
+
+~~~asm
+0000000000401a8e <test>:
+  401a8e:       48 83 ec 08             sub    $0x8,%rsp
+  401a92:       b8 00 00 00 00          mov    $0x0,%eax
+  401a97:       e8 0d fe ff ff          callq  4018a9 <getbuf>
+  401a9c:       89 c2                   mov    %eax,%edx
+  401a9e:       48 8d 35 43 18 00 00    lea    0x1843(%rip),%rsi        # 4032e8 <_IO_stdin_used+0x3d8>
+  401aa5:       bf 01 00 00 00          mov    $0x1,%edi
+  401aaa:       b8 00 00 00 00          mov    $0x0,%eax
+  401aaf:       e8 2c f3 ff ff          callq  400de0 <__printf_chk@plt>
+  401ab4:       48 83 c4 08             add    $0x8,%rsp
+  401ab8:       c3                      retq
+
+~~~
+
+~~~c
+11 void touch3(char *sval)  //注意参数
+12 {
+13     vlevel = 3; /* Part of validation protocol */
+14     if (hexmatch(cookie, sval)) {
+15         printf("Touch3!: You called touch3(\"%s\")\n", sval);
+16         validate(3);
+17     } else {
+18         printf("Misfire: You called touch3(\"%s\")\n", sval);
+19         fail(3);
+20     }
+21     exit(0);
+22 }
+~~~
+
+0000000000401a14 <touch3>
+
+**level4**
+
+ROP攻击
+
+~~~asm
+0000000000401abf <addval_424>:
+  401abf:       8d 87 a7 50 90 c3       lea    -0x3c6faf59(%rdi),%eax
+  401ac5:       c3                      retq
+
+0000000000401ac6 <getval_130>:
+  401ac6:       b8 d8 c3 76 0f          mov    $0xf76c3d8,%eax
+  401acb:       c3                      retq
+
+0000000000401acc <addval_232>:
+  401acc:       8d 87 48 89 c7 90       lea    -0x6f3876b8(%rdi),%eax     //mov rax rdi
+  401ad2:       c3                      retq
+
+0000000000401ad3 <getval_104>:
+  401ad3:       b8 48 89 c7 c3          mov    $0xc3c78948,%eax    //48 89 c7 rax值存入rdi中
+  401ad8:       c3                      retq
+
+0000000000401ad9 <addval_489>:
+  401ad9:       8d 87 db 48 81 c7       lea    -0x387eb725(%rdi),%eax
+  401adf:       c3                      retq
+
+0000000000401ae0 <setval_484>:
+  401ae0:       c7 07 58 90 90 c3       movl   $0xc3909058,(%rdi)      //58出现说明时返回rax的值
+  401ae6:       c3                      retq
+
+0000000000401ae7 <addval_375>:
+  401ae7:       8d 87 58 90 90 c3       lea    -0x3c6f6fa8(%rdi),%eax  
+  401aed:       c3                      retq
+
+0000000000401aee <addval_499>:
+  401aee:       8d 87 4a 89 c7 c3       lea    -0x3c3876b6(%rdi),%eax
+  401af4:       c3                      retq
+
+0000000000401af5 <mid_farm>:
+  401af5:       b8 01 00 00 00          mov    $0x1,%eax
+  401afa:       c3                      retq
+
+0000000000401afb <add_xy>:
+  401afb:       48 8d 04 37             lea    (%rdi,%rsi,1),%rax   //计算偏移量的函数
+  401aff:       c3                      retq
+
+0000000000401b00 <getval_265>:
+  401b00:       b8 5d 89 d6 90          mov    $0x90d6895d,%eax  //edx->esi
+  401b05:       c3                      retq
+
+0000000000401b06 <getval_350>:
+  401b06:       b8 89 c1 c4 d2          mov    $0xd2c4c189,%eax  //eax->ecx
+  401b0b:       c3                      retq
+
+0000000000401b0c <setval_200>:
+  401b0c:       c7 07 48 89 e0 c1       movl   $0xc1e08948,(%rdi)   //rsp->rax
+  401b12:       c3                      retq
+
+0000000000401b13 <setval_339>:
+  401b13:       c7 07 89 ca 18 c9       movl   $0xc918ca89,(%rdi)  //ecx->edx
+  401b19:       c3                      retq
+
+0000000000401b1a <setval_390>:
+  401b1a:       c7 07 81 d6 08 db       movl   $0xdb08d681,(%rdi)
+  401b20:       c3                      retq
+
+0000000000401b21 <getval_108>:
+  401b21:       b8 48 89 e0 c2          mov    $0xc2e08948,%eax
+  401b26:       c3                      retq
+
+0000000000401b27 <getval_332>:
+  401b27:       b8 48 89 e0 c3          mov    $0xc3e08948,%eax
+  401b2c:       c3                      retq
+
+0000000000401b2d <addval_235>:
+  401b2d:       8d 87 ca e3 89 c1       lea    -0x3e761c36(%rdi),%eax   //eax->ecx   401b31
+  401b33:       c3                      retq
+
+0000000000401b34 <addval_154>:
+  401b34:       8d 87 89 d6 18 c0       lea    -0x3fe72977(%rdi),%eax
+  401b3a:       c3                      retq
+
+0000000000401b3b <addval_374>:
+  401b3b:       8d 87 8b d6 08 c0       lea    -0x3ff72975(%rdi),%eax
+  401b41:       c3                      retq
+
+0000000000401b42 <getval_465>:
+  401b42:       b8 89 c1 18 d2          mov    $0xd218c189,%eax
+  401b47:       c3                      retq
+
+0000000000401b48 <setval_300>:
+  401b48:       c7 07 89 c1 c2 de       movl   $0xdec2c189,(%rdi)
+  401b4e:       c3                      retq
+
+0000000000401b4f <addval_389>:
+  401b4f:       8d 87 8d d6 84 d2       lea    -0x2d7b2973(%rdi),%eax
+  401b55:       c3                      retq
+
+0000000000401b56 <addval_352>:
+  401b56:       8d 87 89 ca c3 73       lea    0x73c3ca89(%rdi),%eax  //ecx ——》edx  401b58
+  401b5c:       c3                      retq
+
+0000000000401b5d <setval_233>:
+  401b5d:       c7 07 48 89 e0 c7       movl   $0xc7e08948,(%rdi)
+  401b63:       c3                      retq
+0000000000401b64 <setval_471>:
+  401b64:       c7 07 09 ca 08 d2       movl   $0xd208ca09,(%rdi)
+  401b6a:       c3                      retq
+
+0000000000401b6b <addval_393>:
+  401b6b:       8d 87 89 d6 78 c9       lea    -0x36872977(%rdi),%eax
+  401b71:       c3                      retq
+
+0000000000401b72 <setval_417>:
+  401b72:       c7 07 48 89 e0 c7       movl   $0xc7e08948,(%rdi)
+  401b78:       c3                      retq
+
+0000000000401b79 <getval_451>:
+  401b79:       b8 89 ca 90 c3          mov    $0xc390ca89,%eax
+  401b7e:       c3                      retq
+
+0000000000401b7f <setval_480>:
+  401b7f:       c7 07 89 c1 30 db       movl   $0xdb30c189,(%rdi)
+  401b85:       c3                      retq
+
+0000000000401b86 <addval_242>:
+  401b86:       8d 87 89 ca 28 d2       lea    -0x2dd73577(%rdi),%eax
+  401b8c:       c3                      retq
+
+0000000000401b8d <getval_475>:
+  401b8d:       b8 99 ca 08 d2          mov    $0xd208ca99,%eax
+  401b92:       c3                      retq
+
+0000000000401b93 <getval_435>:
+  401b93:       b8 09 ca 38 c9          mov    $0xc938ca09,%eax
+  401b98:       c3                      retq
+
+0000000000401b99 <setval_256>:
+  401b99:       c7 07 12 4c 89 e0       movl   $0xe0894c12,(%rdi)
+  401b9f:       c3                      retq
+
+0000000000401ba0 <setval_481>:
+  401ba0:       c7 07 f8 89 ca 91       movl   $0x91ca89f8,(%rdi)
+  401ba6:       c3                      retq
+
+0000000000401ba7 <getval_228>:
+  401ba7:       b8 88 48 99 e0          mov    $0xe0994888,%eax
+  401bac:       c3                      retq
+
+0000000000401bad <addval_149>:
+  401bad:       8d 87 89 c1 48 d2       lea    -0x2db73e77(%rdi),%eax
+  401bb3:       c3                      retq
+
+0000000000401bb4 <addval_397>:
+  401bb4:       8d 87 11 81 c1 c3       lea    -0x3c3e7eef(%rdi),%eax
+  401bba:       c3                      retq
+
+0000000000401bbb <setval_421>:
+  401bbb:       c7 07 55 e0 a9 d6       movl   $0xd6a9e055,(%rdi)
+  401bc1:       c3                      retq
+
+0000000000401bc2 <getval_196>:
+  401bc2:       b8 89 d6 84 c9          mov    $0xc984d689,%eax
+  401bc7:       c3                      retq
+
+0000000000401bc8 <getval_174>:
+  401bc8:       b8 14 89 c1 c3          mov    $0xc3c18914,%eax    //401bca eax-》ecx
+  401bcd:       c3                      retq
+
+0000000000401bce <getval_262>:
+  401bce:       b8 48 89 e0 c3          mov    $0xc3e08948,%eax    //mov rsp rax  
+  401bd3:       c3                      retq
+
+0000000000401bd4 <end_farm>:
+  401bd4:       b8 01 00 00 00          mov    $0x1,%eax
+  401bd9:       c3                      retq
+
+~~~
+
+
+
+
+
+
+
+
+
+## 序章
+
+1.cpu内部结构：PC（program count）==大小为一个字的存储空间存储一个将要执行语句的地址，然后不断更新到下一条要执行的指令==
+
+2.寄存器文件：临时存放数据的空间	
+
+理解虚拟内存
+
+![屏幕截图 2025-04-05 201413](/images/csapp/screenshot-2025-04-05-201413.png)
+
+==linux核心：一切皆为文件==
+
+![屏幕截图 2025-04-05 202431](/images/csapp/screenshot-2025-04-05-202431.png)
+
+## 信息的表示与处理
+
+### 信息的存储：
+
+1.内存看作一个非常的数组，每个数字都有一个地址我把它们的集合称为==虚拟地址空间==
+
+2.字长：决定虚拟空间的最大值
+
+3.==大端法==：最高有效字节放在低地址处，对应的就是小端法
+
+![屏幕截图 2025-04-05 203325](/images/csapp/screenshot-2025-04-05-203325.png)
+
+移位运算 
+
+![屏幕截图 2025-04-07 095851](/images/csapp/screenshot-2025-04-07-095851.png)
+
+左移和逻辑右移一样，但是要注意算术右移移动完之后如果是负数是补1，==有符号数进行算术右移，无符号为逻辑右移==，总之就是补它的符号位即可。
+
+### 整数的表示
+
+**==原码，反码，补码==
+
+正数的三者完全一致，而负数的原码为符号位为1其他位按照正数计算即可如-1用一个字节表示的话即         1000 0001
+
+而负数的反码为符号位不变其他位取反，而补码是在反码的基础上再+1
+
+-1的补码就是1111 1111而从补码再转换到原码，就是除去符号位之后减1然后再取反
+
+ **==补码的直观理解==
+
+首先我们的内存存储有符号数可以看作一个我们日常生活中的圆盘，比如8点到十点可以顺时针旋转两格也可以，逆时针旋转10就是8-10的效果等同于8+2，这样我们把一个减法转换为加法，而2是通过公式 ==2=模—10==来得到的，同理我们理解补码的计算规则，先求出反码来然后+1得到补码
+
+![屏幕截图 2025-04-07 103211](/images/csapp/screenshot-2025-04-07-103211.png)
+
+例子：101-010即5-2则它等同于5+（$2^3$ -2）  模为8
+
+010的反码就是各个位取反为101，而==任意数字加上他的反码都为每一位都是1==，010+101=111，而这时候加上1就变成了模，（这也就是为什么我们要求取完反码加1），所以模-2即可写成（010+101+1）-010=101+1就是反码加1
+
+**==有无符号之间数字的转变==
+
+原则：位模式不变，但是解释这些位的方式改变了
+
+首先看无符号和有符号的映射关系（==这里都对应的是补码，而不是原码==, x向量是补码然后这个函数目的是求它的真值）
+
+![屏幕截图 2025-04-07 104933](/images/csapp/screenshot-2025-04-07-104933.png)
+
+w表示位数，上面是无符号数，下面为有符号数，x（w-1）位表示的就是最高位
+
+![屏幕截图 2025-04-08 202033](/images/csapp/screenshot-2025-04-08-202033.png)
+
+从上面的式子做差我们可以得到：
+
+1.不论有无符号当最高位为0，则两者一致
+
+2.若最高位为1，无符号转为有符号方法就是在原来基础上==-2的w次==，w为位数
+
+   反之，有符号转无符号就是==+2的w次方==
+
+**==注意==：
+c语言中，有符号数和无符号数进行比较时，会把有符号数转换为无符号数
+
+**==较小数据类型转换为较大数据类型==
+
+当为无符号数时补零即可在前面，当为有符号数且最高位为1，则在前面补1，（好理解的方法就是，补一之后求原码可以保持一致，那么数据就一致）
+
+**==较大类型转换较小数据类型==
+
+ 先看无符号数：int ->short 高16位数字被丢弃，相当于对原来的数字mod 2的16次
+
+有符号数：
+
+![屏幕截图 2025-04-08 205056](/images/csapp/screenshot-2025-04-08-205056.png)
+
+先转无符号再截断再转有符号
+
+### 整数的运算
+
+==一个原则：同号相加会产生溢出==
+
+
+
+**==无符号数的加法==
+
+![屏幕截图 2025-04-09 095532](/images/csapp/screenshot-2025-04-09-095532.png)
+
+判断是否溢出的程序，右边是对逻辑的简单证明
+
+**==有符号数的加法==
+
+![屏幕截图 2025-04-09 101341](/images/csapp/screenshot-2025-04-09-101341.png)
+
+**==无符号数的减法==
+
+利用的思想是：减去一个数等于加上这个数的相反数，而求相反数的方法就是利用 2^w溢出导致结果也可以看作1所以 
+
+![屏幕截图 2025-04-13 230325](/images/csapp/screenshot-2025-04-13-230325.png)
+
+求x的逆元的方法
+
+**==有符号数的减法==
+
+![image-20250518141819479](/images/csapp/image-20250518141819479.png)
+
+由于有符号数正负的不对称所以，最小值的逆元就是它本身
+
+**==无符号数的乘法运算==
+
+w位数字相乘大概率是2w位但是会截断到w位
+
+**==补码的乘法==
+
+乘法左移即可，而除法无符号数右移即可，有符号要进行算术右移，但还有以一个注意的点是，负数右移截断之后通常会结果-1，如-7/4正常结果是-1而由于右移之后结果是-2，所以我们要加一个偏置而这个偏置的大小是 2^n-1 n是右移位数
+
+**==除法舍入问题==
+
+![image-20250518143021785](/images/csapp/image-20250518143021785.png)
+
+补码除法为了向下取整所以需要在<0的情况下加一个偏置量计算方法是：==（1 <<k）-1==,k为左移的位数。
+
+### 浮点数
+
+![屏幕截图 2025-04-13 234334](/images/csapp/screenshot-2025-04-13-234334.png)
+
+normalized规格化的值
+
+denormalized非规格化的值  infinity特殊值（表示无穷大或者无穷小或者不是一个数）
+
+对于==规格化的值==
+
+float：
+![image-20250518144941906](/images/csapp/image-20250518144941906.png)
+
+右上角是计算公式
+
+而对于==非规格化的值和特殊值建议看原书==
+
+非规格化==E=1-bias==，==M=0.fff==
+
+==int和float型的转换==
+
+![image-20250518151537696](/images/csapp/image-20250518151537696.png)
+
+## 程序的机器级表示
+
+调用者保存：
+
+![image-20250423100046973](/images/csapp/image-20250423100046973.png)
+
+这里的funA是调用者函数，B是被调用者而%rbx的存储的值在A中前后应该保持一致，所以我们在调用B函数之前保存rbx的值然后在调用结束之后再回复
+
+被调用者策略：
+
+就是再funB中操作在操作前后进行保存，然后在ret（就是返回的）的前一步恢复rbx的值
+
+### 寄存器与数据传送指令
+
+![image-20250423100839537](/images/csapp/image-20250423100839537.png)
+
+内存引用：（）括号中为一个寄存器实际的含义就是==机器将rbx中的值看作一个地址然后将这个地址中的内容存储到rax中==
+
+操作数中（按at&t）后面是目的操作数，前面是源操作数，而目的操作数不可以是立即数
+
+![image-20250423102751632](/images/csapp/image-20250423102751632.png)
+
+举个例子如果想要实现，一个数据从一个位置到另一个位置，我们的操作如上
+
+~~~assembly
+//例如我们要把%rbx中指向地址的值放到%rdx中那么我们需要一个寄存器做中间传递
+mov (%rbx)  %rax   //内存引用就是把rbx中存储地址位置的值取出来放到rax中
+mov %rax  (%rdx)    //rax中的值放到rdx中存储地址位置上
+~~~
+
+### 栈中数据与传送指令
+
+![image-20250423105750263](/images/csapp/image-20250423105750263.png)
+
+在内存中就是我们一开始放的图片，栈是高地址向低地址生长的，而push操作其实是rsp（栈顶指针-8）然后把rax中的值放到rsp指向的位置，pop类似
+
+### 算术逻辑与逻辑运算指令
+
+leaq：加载有效地址
+
+![image-20250423110651314](/images/csapp/image-20250423110651314.png)
+
+leaq并不是要取地址中的值来赋值给rax而是单纯计算出一个值放到rax中，计算的方法同上
+
+![image-20250423111633188](/images/csapp/image-20250423111633188.png)
+
+来实现乘法运算，比例因子只能是1 2 4 8所以不能直接*12
+
+![image-20250423111906308](/images/csapp/image-20250423111906308.png)
+
+二元操作，第二个数既是源操作数也是目的操作数，==所以它不能是一个立即数，只能是立即数或者寄存器==
+
+![image-20250423112455099](/images/csapp/image-20250423112455099.png)
+
+移位运算，k可以是立即数也可以是存储在%cl中的数==移动的位数只看cl中的低w位==
+
+### 指令与条件码
+
+![image-20250426150945558](/images/csapp/image-20250426150945558.png)
+
+条件码寄存器：
+CF：无符号数进位时，设置为1
+
+ZF：上一个条件执行完之后如果结果为0，设置为1
+
+SF：语句1执行完为负时设置为1
+
+OF：有符号数溢出时设置为1
+
+~~~assembly
+cmp和test指令
+cmpq %rax %rdx  //类似sub操作但是结果只存放在条件码寄存器之中对目的寄存器无影响
+test同add
+~~~
+
+==*接下来我们看如何用条件码来进行逻辑判断==
+
+![image-20250426152333071](/images/csapp/image-20250426152333071.png)
+
+比较ab两个值是否相等，如果相等返回1，不等则返回0  sete中的结尾e时equal的意思它代表的含义就是下面两条语句，之后再对al进行扩充位数
+
+再来看一个复杂的将a==b修改为a<b
+
+![image-20250426152854892](/images/csapp/image-20250426152854892.png)
+
+此时使用指令setl 而这个指令实际上完成的操作是对符号位和溢出位取异或进行检查，原理如下如果a-b不发生溢出，那么符号位就是最终所要的真值，但是如果发生溢出==case3来看符号位为0但是a明显小于b这时候，sf与最终真值不符，case4也是这个道理==所以我们进行一个异或操作来得到最终的真值
+
+### 不同寄存器小结
+
+
+
+- %rax(%eax) 用于做累加
+- %rcx(%ecx) 用于计数
+- %rdx(%edx) 用于保存数据
+- %rbx(%ebx) 用于做内存查找的基础地址
+- %rsi(%esi) 用于保存源索引值
+- %rdi(%edi) 用于保存目标索引值
+- %rip始终保存**下一条要执行指令的线性地址**。
+
+### 过程（函数调用）
+
+栈帧：函数执行所需要的空间远超出寄存器的大小，借助栈上的空间，这部分空间就成为栈帧
+
+通过call指令调用函数，并且在执行函数之前要把返回地址压入栈中
+
+==传递参数如果大于6需要用栈来传递参数，而用栈传递数据的大小需要向8的倍数对齐例如如果之占一个字节也需要分配8个字节的空间==
+
+![image-20250428101605633](/images/csapp/image-20250428101605633.png)
+
+call指令调用时要把下一条指令的地址传入栈中然后函数调用结束，这个返回地址弹栈存放在rip中，就可以实现返回main函数继续执行下面的指令
+
+
+
+![image-20250428102609404](/images/csapp/image-20250428102609404.png)
+
+前六个参数不需要对其，后两个用栈传递需要对齐
+
+==递归相对应汇编==
+
+![image-20250428105039740](/images/csapp/image-20250428105039740.png)
+
+~~~assembly
+rfact:
+    pushq   %rbx    
+    movq    %rdi, %rbx   //被调用者保存先把n保存在rbx中
+    movl    $1, %eax    //函数返回值是rax想当于计算result=1
+    cmpq    $1, %rdi   
+    jle     .L35    //如果<= 跳转L35. 返回rax
+    leaq    -1(%rdi), %rdi   //否则先计算新的参数即n-1存放在rdi中
+    call    rfact       
+    imulq   %rbx, %rax   //call完的返回值存放在rax中再与n相乘然后返回
+.L35:
+    popq    %rbx
+    ret
+~~~
+
+==简述rbp和rsp==
+
+~~~txt
+高地址
+──────────────────────
+[ ... 上层调用者的栈帧 ... ]
+──────────────────────
+[ return RIP       ] ← 存在 call 指令自动 push 的返回地址
+──────────────────────
+[ old %rbp         ] ← pushq %rbp （RBP@entry）
+────────────────────── ← ← ← ← ← ← ←  ← movq %rsp,%rbp 后此处为 RBP
+↑                 ↑
+│                 │
+│    %rbp 栈帧基址  │
+│ (固定不动，用它作寻址基准)
+↓                 ↓
+──────────────────────
+[ 局部变量 #1      ] ← -8(%rbp)
+──────────────────────
+[ 局部变量 #2      ] ← -16(%rbp)
+──────────────────────
+[ … 更多局部 …    ] ← -offset(%rbp)
+────────────────────── ← ← ← ← ← ← ←  ← subq $N,%rsp 后此处为 %rsp 初始位置
+↑                 ↑
+│                 │
+│    %rsp 栈顶     │
+│ (动态移动，用它分配/释放栈空间)
+↓                 ↓
+低地址
+~~~
+
+所以rbp不动通过对他正偏移和负偏移来访问参数和局部变量
+
+### 缓冲区溢出
+
+（把实验搞完就会了）
+
+## Linkers
+
+### 须知
+
+- 可重定位目标文件 Relocatable object file (.o file)
+  - 每个 `.o` 文件都是由对应的 `.c` 文件通过编译器和汇编器生成，包含代码和数据，可以与其他可重定位目标文件合并创建一个可执行或共享的目标文件
+- 可执行目标文件 Executable object file（a.out file)
+  - 由链接器生成，可以直接通过加载器加载到内存中充当进程执行的文件，包含代码和数据
+- 共享目标文件 Shared object file (.so file)
+  - 在 windows 中被称为 Dynamic Link Libraries(DLLs)，是类特殊的可重定位目标文件，可以在链接(静态共享库)时加入目标文件或加载时或运行时(动态共享库)被动态的加载到内存并执行
+
+- 强符号：函数和初始化的全局变量
+- 弱符号：未初始化的全局变量
+
+链接器在处理强弱符号的时候遵守以下规则：
+
+1. 不能出现多个同名的强符号，不然就会出现链接错误
+2. 如果有同名的强符号和弱符号，选择强符号，也就意味着弱符号是『无效』d而
+3. 如果有多个弱符号，随便选择一个
+
+例子：
+
+~~~c
+// 文件 p1.c
+int x; 
+int y;
+p1() { ... } 
+
+// -----------------------------------------
+// 文件 p2.c
+double x;
+p2() { ... }
+~~~
+
+这里 p1 和 p2 中定义的变量都是弱符号，我们对 p2 中的 x 进行写入时，居然可能会影响到 p1 中的 y！想想为什么？其实原因很简单，以为 x 实际上引用的是同一个地址，而 double 的字节数是 int 的两倍，所以 y 就『躺枪』了。
+
+~~~c
+// 文件 p1.c
+int x = 7; 
+int y = 4;
+p1() { ... } 
+
+// -----------------------------------------
+// 文件 p2.c
+double x;
+p2() { ... }
+~~~
+
+这个例子是强弱符号间的引用了，p1 中的变量因为初始化的缘故，是强符号，所以在 p2 中引用 x 时，实际上操作的是 p1 中定义的全局变量的值，而因为 p2 中 x 是 double 类型，所以一旦进行改动，实际上就 p1 中 x 和 y 都会受到影响。
+
+### ELF主要内容
+
+![image-20250512110855764](/images/csapp/image-20250512110855764.png)
+
+- ELF header
+  - 包含 word size, byte ordering, file type (.o, exec, .so), machine type, etc
+- Segment header table
+  - 包含 page size, virtual addresses memory segments(sections), segment sizes
+- .text section
+  - 代码部分
+- .rodata section
+  - 只读数据部分，例如跳转表
+- .data section
+  - 初始化的全局变量
+- .bss section
+  - 未初始化的全局变量
+- .symtab section
+  - 包含 symbol table, procudure 和 static variable names 以及 section names 和 location
+- .rel.txt section
+  - .text section 的重定位信息
+- .rel.data section
+  - .data section 的重定位信息
+- .debug section
+  - 包含 symbolic debugging (`gcc -g`) 的信息
+- Section header table
+  - 每个 section 的大小和偏移量
+
+### 重定位
+
+## 处理器体系结构
+
+### 指令系统
+
+用一种简单的Y86指令系统
+
+![image-20250525144114828](/images/csapp/image-20250525144114828.png)
+
+以上是mov的四种指令，高位的第一个字节高四位表示操作码，第四位表示实现功能（例如图中都是0代表实现mov操作）
+
+==因为Y86中定义了15个寄存器，所以编号是0x0~0xe，所以如图第二行中F表示的是没有寄存器==
+
+**整数操作指令**
+
+![image-20250525144811806](/images/csapp/image-20250525144811806.png)
+
+功能部分不同
+
+### 逻辑门
+
+（等到大二学数字电路）
+
+### 指令的顺序实现
+
+![image-20250525151415378](/images/csapp/image-20250525151415378.png)
+
+cpu执行的操作
+
+Decode，Write Back针对寄存的读入与写的两个操作，Execute是对ALU的操作（3种），而Memory是对内存的读入和写入操作。Update就是把pc设置成下一条指令的地址
+
+![image-20250525153107462](/images/csapp/image-20250525153107462.png)
+
+跳转指令执行阶段通过对条件码的计算来确定是否要进行跳转指令
+
+### 各个阶段的硬件实现
+
+**Fetch**
+
+以pc的值为起始地址取10bytes内容（因为y86中最长指令为10字节），之后分为两个部分一部分为1字节另一部分为9字节，1字节内容高四位和第四位分为指令代码和指令功能
+
+![image-20250527081006193](/images/csapp/image-20250527081006193.png)
+
+icode部分可以用来判断是否指令合法，需要寄存器数量和是否存在常数C，这样的话就可以决定这条指令的长度，之后PC加上这个长度就是下一条指令的的起始
+
+如果需要两个寄存器的话，Align第一个字节的高四位和第四位分别存入rA和rB，如果只需要一个寄存器那么另一个会设置为0xF。
+
+当Need_regids==1时，Align的2~9字节表示常数C;当它值为0时，Align的1-8字节表示常数
+
+**Decode Stage**
+
+![image-20250527081756967](/images/csapp/image-20250527081756967.png)
+
+用icode来判断是否需要rsp的值，右边四条指令中只出现一个寄存器但在实际调用时还需要知道rsp的值，所以用icode来判断
+
+**Execute**
+
+![image-20250527082423154](/images/csapp/image-20250527082423154.png)
+
+CC为条件码，我们只在算术逻辑运算中更新CC，所以当指令是对==内存引用地址的运算==，或者==栈的操作时==，CC不更新。
+
+Cond由ifun和CC来产生一个值（针对跳转指令），当cnd==1，跳转否则不跳转
+
+**Memory Stage**
+
+![image-20250527083452341](/images/csapp/image-20250527083452341.png)
+
+通过计算来得到Stat值
+
+**Write Back Stage**
+
+![屏幕截图 2025-05-27 083622](/images/csapp/screenshot-2025-05-27-083622.png)
+
+遇到cmov之类的指会取决于cnd的值，如果为1执行指令，当为1时==会设置寄存器为0xF来禁止写入==
+
+**PC值的更新**
+
+![image-20250527084018750](/images/csapp/image-20250527084018750.png)
+
+4种更新pc情况
+
+### 流水线的通用原理
+
+![image-20250527090600033](/images/csapp/image-20250527090600033.png)
+
+当时钟寄存器处于高电位时，寄存器值才会更新
+
+### 流水线的硬件实现
+
+**SEQ+：电路重定时**
+
+![image-20250527092659323](/images/csapp/image-20250527092659323.png)
+
+引入5个寄存器，和上面一样构造流水线，不同的是把第一个寄存器存放PredPC值（预测）
+
+### 数据冒险
+
+指令之间有连接性，下一体指令往往需要上一条指令的结果
+
+![image-20250530131127772](/images/csapp/image-20250530131127772.png)
+
+例如上图的指令
+
+第三条指令在decode阶段由于上面两个指令的write还没有执行，直接decode第三条导致实际作用产生偏差
+
+对此我们可以引入bubble来实现
+
+![image-20250530131251082](/images/csapp/image-20250530131251082.png)
+
+此时在执行add操作的decode阶段上面两个操作的写回部分已经完成，但是依然存在很大的问题，加入很多bubble导致效率降低，所以我们引入另一种方法==数据转发==
+
+可以看到我们可以让上面的指令不经过寄存器直接把第三条需要的立即数直接放在add指令中，所以在设计中进入==至于实现方法就是在计算阶段中alu执行结果传输到decode阶段（具体实现过程不需要知道）
+
+所以我们可以通过bubble和数据转发提升效率，而一般的程序指令也是通过这两种方法组合实现
+
+### 控制冒险
+
+正常情况下一个循环需要找到下一条的pc指令，进入流水，但是如果遇到ret指令那我们必须在执行完这条的5个部分才能从栈中找到所需要的，或者遇到条件跳转指令，我们需要上面代码执行之后的结果才能判断，那么这就是控制冒险
+
+ret进入访存阶段之后我们才可以执行下面的指令，所以急促通过暂停
+
+![image-20250530132759935](/images/csapp/image-20250530132759935.png)
+
+跳转指令
+
+![image-20250530133521577](/images/csapp/image-20250530133521577.png)
+
+对左边代码做出解释，这是简化过的==如果跳转target函数内部要执行接下来的两条irmovq指令，如果不跳转执行第三条irmovq指令==
+
+条件预测的过程比较复杂，但我们假设机器对于所有的预测都是执行，所以当我们遇到jne直接下一个周期塞入第一条irmovq指令，接下来周期再放入一条movq指令，好下一个周期到了第五个周期jne指令已经计算完成，如果现在我们发现结果是不跳转，那么我们现在的任务是删除这两条指令，我们采用的方法是==在第五个周期第三条指令的执行阶段放入bubble，第六周期对第四条指令实行同样的操作==，接着不跳转的指令进入流水。	 
+
+## 优化程序性能
+
+### 程序优化的局限性
+
+1.内存别名引用：例如指针指向相同的位置和不同的位置，在优化前后产生了不同的效果，这种优化由于不安全所以无法采用
+
+![image-20250606132806318](/images/csapp/image-20250606132806318.png)
+
+例如，在大多数情况下add1执行六次取址，而add2只执行三次，效率是大于下面的但是如果是xy yp指向的内存一致的情况，会导致最终的结果不一致，所以这种优化不可以使用
+
+2.函数调用
+
+![image-20250606133215506](/images/csapp/image-20250606133215506.png)
+
+counter是一种全局变量而func1和func2完全效果不一致，所以不可以优化为2
+
+度量程序性能，我们引入==CPE==（每个元素所要执行的周期数）
+
+### 优化程序性能
+
+**代码移动**
+
+![image-20250606134352331](/images/csapp/image-20250606134352331.png)
+
+减少了函数strlen的调用可以减少大量的时间
+
+**减少内存引用的次数**
+
+![image-20250606135328276](/images/csapp/image-20250606135328276.png)
+
+![image-20250606135259030](/images/csapp/image-20250606135259030.png)
+
+每次累计值需要取址，写入，当我们改用加入一个临时变量的时候，效率可以大大提升
+
+### 现代处理器
+
+ICU（==指令控制单元==：从内存中读取指令序列），EU（==执行单元==）
+
+![image-20250610083719434](/images/csapp/image-20250610083719434.png)
+
+### 数据流图
+
+![image-20250610084449105](/images/csapp/image-20250610084449105.png)
+
+我们将右图的四条汇编指令，可以翻译为左边的五个操作，那么我们可以将寄存器分为四类：
+
+**只读**：寄存器作为源值，可作为数据/地址，但在执行中不会被修改
+
+**只写**：只写入数据的寄存器，这个程序内无
+
+**局部**：比如条件寄存器，只在循环内部修改和使用，每一次迭代之间不相关
+
+**循环**：可以作为源值也可以作为目的，每一次迭代需要上一次迭代的值
+
+![image-20250610085641460](/images/csapp/image-20250610085641460.png)
+
+因为在程序执行中分支预测功能，所以判断指令可以简化掉，简化之后的操作可以抽象为左图，当循环次数为n时就可以形成右图的循环链路，左侧为累积相乘右图为下标变换，而制约程序执行速度的就是左侧的浮点数乘法
+
+### 循环展开
+
+![image-20250610204213640](/images/csapp/image-20250610204213640.png)
+
+这是我们之前对于一个程序的优化，我们称之为==2*1循环展开==，（2代表每次循环处理两个数组元素），但是我们从CPE中测定得到对于int加法类型确实性能有提升（循环次数减少的作用），但是对于其他情况性能提升的作用很弱，那么增加每次循环处理的数组元素个数是否能提升性能呢。
+
+![image-20250610204555399](/images/csapp/image-20250610204555399.png)
+
+这是汇编相应的实现过程，我们可以发现即使循环次数的减少但在执行过程中mul操作执行的次数并没有改变，所以提高单词的循环处理数组元素也不能达到我们的目的。
+
+![image-20250610205030926](/images/csapp/image-20250610205030926.png)
+
+我们新的程序中采用的了==2*2两路并行展开==，将偶数下标存储在acc0中奇数存储在acc1中，最后再将两者相加。
+
+观察汇编我们发现
+
+![image-20250610205253070](/images/csapp/image-20250610205253070.png)
+
+寄存器使用了两个寄存器来并行，简化后的流程就是右侧的图，大大提升了效率。而不断增加并行的寄存器，CPE会减小，但是我们要注意==当超出寄存器的个数，导致将传入栈中时==，此时程序的执行效率可能会改变。
+
+另一种提升执行效率的方法：
+
+**改变acc的合并顺序**
+
+~~~c
+combine5:
+acc = (acc OP data[i]) OP data[i+1]
+combine7:
+acc = acc OP (data[i] OP data[i+1])
+~~~
+
+![image-20250610210415771](/images/csapp/image-20250610210415771.png)
+
+我们可以知道先合并的两个数据不需要等待之前迭代的部分，也就是主链路中只有n/2个mul这也是效率提升的原因
+
+## 存储器层次结构
+
+### 存储技术
+
+Cache是SRAM,造价更贵，但更稳定
+
+![image-20250614222419476](/images/csapp/image-20250614222419476.png)
+
+Controller输入2指令在chip中取第二行的数据到缓冲区中
+
+![image-20250614222632437](/images/csapp/image-20250614222632437.png)
+
+之后再输入columns为1，从缓冲区中取1传输到Memory
+
+### 缓存（Cache）
+
+**Cache hit**：
+当从K+1层中找d这个数据时，我们先从第k层中寻找，如果d刚好在k层中，我们称这种情况为缓存命中，反之称为缓存不命中（Cache miss）
+
+==若发生缓存不命中的情况时，第k层中缓存从K+1层中取出目标数据块，如果k层已满那么会覆盖其中的块（替换策略有：随机替换和LRU等）==
+
+**Cache的内部结构**
+
+![image-20250614225642835](/images/csapp/image-20250614225642835.png)
+
+Cache有S个set，每个set中有E个line，每个line中分为三部分分别是Valid（判断数据是否有效），tag标记（==用来确定目标数据是否在当前的Cache line中==），之后的B位就是数据位了，所以一个Cache的空间可以用右边的公式来计算大小。
+
+**Cache的工作过程**：CPU执行从内存地址A中读取数据时，将地址A发送到Cache
+
+### 直接映射高速缓存
+
+**组选择**
+
+CPU发送的地址中
+
+![image-20250615133636766](/images/csapp/image-20250615133636766.png)
+
+从组索引位决定Set的标号（==关于组索引位为什么不选择高位而是选择地址的中间部分，我们随后做出解释==），接着我们取出相应的Cache line
+
+**行匹配**
+
+![image-20250615134036341](/images/csapp/image-20250615134036341.png)
+
+特定行Cache hit的条件有两个，一个是有效值是否为1，另一个是Tag是否匹配如果匹配根据Block offset的字节偏移数来取出相应的数据（例如100指明偏移量为4则从4开始取剩下的字节）
+
+**冲突不命中**
+
+由于数组映射的Cache位置相同使某个set一直在变化导致效率低下的问题（详细看视频看懂这个问题即可）
+
+具体的解决措施就是改变数组的长度使映射的set不同来消除==抖动==
+
+### 组相联和全相联Cache
+
+![image-20250615140035770](/images/csapp/image-20250615140035770.png)
+
+还是需要三个阶段来取数据不同的使在行匹配中需要遍历每个Set找到Tag和有效值都符合要求的line
+
+如果不命中则需要把内存中的一行写入这个set中，最好的替换位置是valid为0的空行，如果不满足则需要一些替换策略来替换已经写入的行中
+
+替换策略（随机替换，最不常用替换，最近使用最少策略）
+
+**全相联**
+整个Cache只有一个set

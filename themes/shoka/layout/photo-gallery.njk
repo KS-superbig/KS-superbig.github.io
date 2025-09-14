@@ -1,0 +1,163 @@
+{% extends '_partials/layout.njk' %}
+
+{% block content %}
+<style>
+/* 让主题原有内容全部隐藏 */
+#header, #sidebar, #footer, #waves, .widgets, .status, .overview, .rpost, .leancloud-recent-comment, .breadcrumb, .meta, .reward, .copyright {
+  display: none !important;
+}
+body, html, #container, #main, .inner, .page, .wrap, .pjax {
+  background: #181a1b !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100vw !important;
+  min-height: 100vh !important;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+.photo-gallery-root {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #181a1b;
+  z-index: 9999;
+  display: flex;
+}
+.gallery-timeline {
+  width: 220px;
+  background: #181a1b;
+  border-right: 1.5px solid #232323;
+  padding: 3rem 1.5rem 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 180px;
+  box-sizing: border-box;
+}
+.gallery-timeline ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+.gallery-timeline li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  font-size: 1.1rem;
+  color: #fff;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.gallery-timeline li:hover {
+  opacity: 1;
+}
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  background: #4db6ac;
+  border-radius: 50%;
+  margin-right: 12px;
+  box-shadow: 0 0 6px #4db6ac88;
+  flex-shrink: 0;
+}
+.timeline-date {
+  color: #fff;
+  font-weight: 500;
+  font-size: 1.05rem;
+}
+.gallery-main {
+  flex: 1;
+  padding: 3rem 3vw;
+  display: flex;
+  flex-direction: column;
+  background: #181a1b;
+  overflow-y: auto;
+  min-width: 0;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 2rem;
+  width: 100%;
+  margin: 0 auto;
+  align-items: start;
+}
+.photo-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 16px #000a;
+  background: #232323;
+  transition: box-shadow 0.2s, transform 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+.photo-thumb:hover {
+  box-shadow: 0 4px 32px #4db6ac88;
+  transform: translateY(-4px) scale(1.03);
+  z-index: 2;
+}
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s;
+}
+@media (max-width: 900px) {
+  .photo-gallery-root {
+    flex-direction: column;
+  }
+  .gallery-timeline {
+    width: 100vw;
+    flex-direction: row;
+    align-items: center;
+    border-right: none;
+    border-bottom: 2px solid #232323;
+    padding: 1rem 2rem;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+  .gallery-timeline ul {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+  }
+  .gallery-timeline li {
+    margin-bottom: 0;
+    margin-right: 2rem;
+  }
+  .gallery-main {
+    padding: 2rem 1vw;
+  }
+}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" />
+<div class="photo-gallery-root">
+  <nav class="gallery-timeline">
+    <ul>
+      <li><span class="timeline-dot"></span><span class="timeline-date">2025年1月</span></li>
+      <li><span class="timeline-dot"></span><span class="timeline-date">2024年12月</span></li>
+      <li><span class="timeline-dot"></span><span class="timeline-date">2024年11月</span></li>
+      <!-- 可继续添加时间点 -->
+    </ul>
+  </nav>
+  <main class="gallery-main">
+    <div class="photo-grid">
+      <a href="/images/photo1.jpg" class="photo-thumb" data-fancybox="gallery"><img src="/images/photo1.jpg" alt="photo1"></a>
+      <a href="/images/photo2.jpg" class="photo-thumb" data-fancybox="gallery"><img src="/images/photo2.jpg" alt="photo2"></a>
+      <a href="/images/photo3.jpg" class="photo-thumb" data-fancybox="gallery"><img src="/images/photo3.jpg" alt="photo3"></a>
+      <!-- 更多图片，直接添加即可，图片放 source/images/ 下 -->
+    </div>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script>
+<script>
+  Fancybox.bind('[data-fancybox="gallery"]');
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+categories:
+  - id: arch
+    name: 计算机体系结构
+    articles:
+      - title: 指令流水线原理
+        cover: https://via.placeholder.com/120x120?text=Arch1
+        date: 2024-12-01
+        summary: 介绍指令流水线的基本原理与实现方式。
+        url: /cs/arch/pipeline/
+      - title: 存储系统基础
+        cover: https://via.placeholder.com/120x120?text=Arch2
+        date: 2024-12-10
+        summary: 讲解存储系统的层次结构与性能优化。
+        url: /cs/arch/storage/
+  - id: algo
+    name: 算法
+    articles:
+      - title: 快速排序详解
+        cover: https://via.placeholder.com/120x120?text=Algo1
+        date: 2024-11-20
+        summary: 快速排序的思想、实现与复杂度分析。
+        url: /cs/algo/quicksort/
+      - title: 二分查找算法
+        cover: https://via.placeholder.com/120x120?text=Algo2
+        date: 2024-11-25
+        summary: 二分查找的实现与应用场景。
+        url: /cs/algo/binary-search/
+  - id: ai
+    name: AI
+    articles:
+      - title: 神经网络入门
+        cover: https://via.placeholder.com/120x120?text=AI1
+        date: 2024-10-15
+        summary: 神经网络的基本结构与训练方法。
+        url: /cs/ai/nn-intro/
+      - title: 机器学习基础
+        cover: https://via.placeholder.com/120x120?text=AI2
+        date: 2024-10-20
+        summary: 机器学习的主要方法与应用。
+        url: /cs/ai/ml-basics/ 
