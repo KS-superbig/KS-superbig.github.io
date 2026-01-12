@@ -2,7 +2,7 @@
 
 > ⚠️ **注意：本项目正在积极开发中，部分功能尚未完成**
 
-## 🌐 网站地址
+## 🌐 网站地址（开加速器/梯子）
 
 **在线访问**: [https://KS-superbig.github.io](https://KS-superbig.github.io)
 
