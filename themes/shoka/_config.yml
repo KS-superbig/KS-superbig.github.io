@@ -1,5 +1,5 @@
 # Alternate site name
-alternate: XYK的博客
+alternate: XYK's Blog
 
 open_graph:
   #twitter_id:
@@ -59,14 +59,9 @@ font:
 iconfont: "1832207_igi8uaupcus"
 menu:
   home: / || home
-  # about: /about/ || user
-  # posts:
-  #   default: / || feather
-  #   archives: /archives/ || list-alt
-  #   categories: /categories/ || th
-  #   tags: /tags/ || tags
-  # friends: /friends/ || heart
-  # links: /links/ || magic
+  devnotes: /cs/ || file
+  gallery: /photo/ || th
+  profile: /profile/ || user
 social:
   #github: https://github.com/yourname || github || "#191717"
   #google: https://plus.google.com/yourname || google

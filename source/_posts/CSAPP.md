@@ -1,5 +1,6 @@
 ---
 title: CSAPP
+date: 2025-04-05 00:00:00
 photos:
   - https://ks-superbig.github.io/images/csapp-cover.jpg
 ---

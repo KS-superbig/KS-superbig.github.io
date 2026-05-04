@@ -15,13 +15,16 @@ title:
   archive_in: 发表于"%s"的文章
 
 menu:
-  home: 首页
-  posts: 文章
-  archives: 归档
-  categories: 分类
-  tags: 标签
-  about: 关于
-  search: 搜索
+  home: Home
+  devnotes: Dev Notes
+  gallery: Gallery
+  profile: Profile
+  posts: Posts
+  archives: Archives
+  categories: Categories
+  tags: Tags
+  about: About
+  search: Search
 
 sidebar:
   overview: 站点概览

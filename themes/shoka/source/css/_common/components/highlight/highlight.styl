@@ -54,24 +54,12 @@ code,
     background: var(--grey-4);
   }
 
-  &::before {
-    content: " ";
-    position: absolute;
-    border-radius: 50%;
-    background: #fc625d;
-    width: .75rem;
-    height: .75rem;
-    left: .75rem;
-    top: .8125rem;
-    box-shadow: 1.25rem 0 #fdbc40, 2.5rem 0 #35cd4b;
-  }
-
   figcaption {
     color: var(--grey-4);
     display: inline-flex;
     font-size: $font-size-small;
     font-weight: 700;
-    padding: 0 6rem 0 5rem;
+    padding: 0 1.5rem;
     min-height: 2.5rem;
     width: 100%;
     text-align: center;
@@ -343,5 +331,101 @@ code,
   .keyword,
   .javascript .function {
     color: var(--color-purple);
+  }
+}
+
+.article.wrap {
+  .highlight {
+    background: var(--article-code-bg);
+    color: var(--article-code-text);
+    border: .0625rem solid rgba(255, 255, 255, .08);
+    border-radius: .75rem;
+    box-shadow: 0 1.25rem 3rem -1.35rem rgba(17, 24, 39, .72);
+    margin: 1.5rem auto 1.65rem;
+
+    figcaption {
+      min-height: 3rem;
+      margin-bottom: 0;
+      padding-left: 1.2rem;
+      background: linear-gradient(90deg, #1f2937, #172033);
+      color: #93a4bd;
+      border-bottom: .0625rem solid rgba(255, 255, 255, .06);
+
+      &::before {
+        color: #e5edf7;
+        font-size: .72rem;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+    }
+  }
+
+  .code-container {
+    background: var(--article-code-bg);
+    color: var(--article-code-text);
+
+    &::-webkit-scrollbar {
+      height: .45rem;
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(147, 164, 189, .35);
+      border-radius: 999px;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, .045);
+    }
+
+    td:first-child {
+      background: var(--article-code-panel);
+      color: #64748b;
+      border-right: .0625rem solid rgba(255, 255, 255, .06);
+    }
+
+    .comment,
+    .punctuation {
+      color: #7f8ea3;
+    }
+
+    .keyword {
+      color: #c084fc;
+    }
+
+    .built_in,
+    .literal,
+    .number,
+    .params {
+      color: #fbbf24;
+    }
+
+    .string,
+    .symbol,
+    .value {
+      color: #86efac;
+    }
+
+    .title,
+    .function {
+      color: #67e8f9;
+    }
+
+    .show-btn {
+      color: #cbd5e1;
+      background-image: linear-gradient(to bottom, rgba(17, 24, 39, 0), var(--article-code-bg) 76%);
+
+      &::after {
+        background: var(--article-code-bg);
+      }
+    }
+  }
+
+  :not(td)>pre {
+    background: var(--article-code-bg);
+    color: var(--article-code-text);
+    border-color: rgba(255, 255, 255, .08);
+    border-radius: .75rem;
+    box-shadow: 0 1.25rem 3rem -1.35rem rgba(17, 24, 39, .72);
   }
 }

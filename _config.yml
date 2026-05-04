@@ -3,7 +3,7 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: XYK的博客
+title: XYK's Blog
 subtitle: ''
 description: ''
 keywords:
@@ -116,7 +116,7 @@ theme: shoka
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
   type: git
-  repo: git@github.com:KS-superbig/KS-superbig.github.io.git
+  repo: https://github.com/KS-superbig/KS-superbig.github.io.git
   branch: main
 
 # 文档：https://shoka.lostyu.me/computer-science/note/theme-shoka-doc/dependents/#% E9%85%8D% E7% BD% AE
@@ -170,7 +170,7 @@ minify:
     enable: true
     stamp: false
     mangle:
-      toplevel: true
+      toplevel: false
     output:
     compress:
     exclude:

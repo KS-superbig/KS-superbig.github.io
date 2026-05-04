@@ -10,11 +10,32 @@
   }
 
   .toc-item {
+    position: relative;
     font-size: $font-size-medium;
-    line-height: 1.8;
+    line-height: 1.65;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .toc-link {
+    display: block;
+    border-radius: .375rem;
+    padding: .18rem .45rem;
+    color: var(--grey-6);
+  }
+
+  .toc-number {
+    color: var(--grey-5);
+    font-family: $font-family-monospace;
+    font-size: .82em;
+    margin-right: .18rem;
+  }
+
+  .toc-child {
+    padding-left: .72rem;
+    border-left: .0625rem solid var(--grey-3);
+    margin-left: .38rem;
   }
 
   .toc-child {
@@ -38,10 +59,16 @@
   }
 
   .current>a {
-    color: var(--primary-color);
+    color: var(--grey-0);
+    background: linear-gradient(90deg, var(--primary-color), var(--color-orange));
+    box-shadow: 0 .5rem 1.35rem -.9rem var(--primary-color);
 
     &:hover {
-      color: var(--primary-color);
+      color: var(--grey-0);
+    }
+
+    .toc-number {
+      color: var(--grey-0);
     }
   }
 }

@@ -103,6 +103,8 @@ const siteRefresh = function (reload) {
 
 const siteInit = function () {
 
+  initLoadingPhrases()
+
   domInit()
 
   pjax = new Pjax({

@@ -88,19 +88,24 @@ const postFancybox = function(p) {
 
       $.each(p + ' .md img:not(.emoji):not(.vemoji)', function(element) {
         var $image = q(element);
-        var info, captionClass = 'image-info';
+        var info, captionClass = 'image-info', $imageWrapLink;
         if(!$image.is('a img')) {
           var imageLink = $image.attr('data-src') || $image.attr('src');
           $image.data('safe-src', imageLink)
-          var $imageWrapLink = $image.wrap('<a class="fancybox" href="'+imageLink+'" itemscope itemtype="http://schema.org/ImageObject" itemprop="url"></a>').parent('a');
+          $imageWrapLink = $image.wrap('<a class="fancybox" href="'+imageLink+'" itemscope itemtype="http://schema.org/ImageObject" itemprop="url"></a>').parent('a');
           if (!$image.is('.gallery img')) {
             $imageWrapLink.attr('data-fancybox', 'default').attr('rel', 'default');
           } else {
             captionClass = 'jg-caption'
           }
+        } else {
+          $imageWrapLink = $image.parent('a');
         }
-        if(info = element.attr('title')) {
-          $imageWrapLink.attr('data-caption', info);
+        info = element.attr('title') || element.attr('alt');
+        if(info) {
+          if ($imageWrapLink) {
+            $imageWrapLink.attr('data-caption', info);
+          }
           var para = document.createElement('span');
           var txt = document.createTextNode(info);
           para.appendChild(txt);

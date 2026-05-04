@@ -135,9 +135,6 @@ hexo.extend.helper.register('_cover', function(item, num) {
     return this._image_url(item.cover, item.path)
   } else if (item.photos && item.photos.length > 0) {
     return this._image_url(item.photos[0], item.path)
-  } else if (item.path && item.path.includes('hello-world')) {
-    // 为Hello World文章指定特定的图片
-    return 'https://tva3.sinaimg.cn/large/6833939bly1gicitht3xtj20zk0m8k5v.jpg';
   } else if (item.path && item.path.includes('CSAPP')) {
     // 为CSAPP文章指定特定的图片
     return 'https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
