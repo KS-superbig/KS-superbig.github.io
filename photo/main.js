@@ -197,46 +197,66 @@ function initModal() {
 
 // --- 6. GSAP ScrollTrigger Animations ---
 function initScrollTriggers() {
-  // Animate story sections on scroll
-  gsap.utils.toArray('.story-section').forEach((section) => {
-    gsap.fromTo(section,
-      {
-        opacity: 0,
-        y: 100
-      },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 1,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: section,
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse"
-        }
-      }
-    );
-  });
+  gsap.utils.toArray('.story-section').forEach((section, i) => {
+    const carousel = section.querySelector('.carousel');
+    const activeItem = section.querySelector('.carousel-item.active');
+    if (!carousel || !activeItem) return;
 
-  // Animate carousel items
-  gsap.utils.toArray('.carousel-item').forEach((item) => {
-    gsap.fromTo(item.querySelector('.carousel-item__info'),
-      {
-        opacity: 0,
-        x: 50
-      },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 0.8,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: item,
-          start: "top 80%",
-          toggleActions: "play none none reverse"
-        }
+    const imageEl = activeItem.querySelector('.carousel-item__image');
+    const infoEl  = activeItem.querySelector('.carousel-item__info');
+    const subtitle = activeItem.querySelector('.carousel-item__subtitle');
+    const title    = activeItem.querySelector('.carousel-item__title');
+    const desc     = activeItem.querySelector('.carousel-item__description');
+
+    // 奇偶交替方向：第0节图片从左、文字从右；第1节图片从右、文字从左
+    const fromLeft = i % 2 === 0;
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: section,
+        start: "top 80%",
+        toggleActions: "play none none reverse"
       }
-    );
+    });
+
+    // 1. 轮播容器整体淡入 + 轻微缩小到正常
+    tl.from(carousel, {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.out"
+    });
+
+    // 2. 图片从左/右滑入
+    if (imageEl) {
+      tl.from(imageEl, {
+        x: fromLeft ? -70 : 70,
+        opacity: 0,
+        duration: 0.75,
+        ease: "power3.out"
+      }, "-=0.3");
+    }
+
+    // 3. 右侧信息栏整体滑入（与图片反向）
+    if (infoEl) {
+      tl.from(infoEl, {
+        x: fromLeft ? 60 : -60,
+        opacity: 0,
+        duration: 0.65,
+        ease: "power3.out"
+      }, "-=0.55");
+    }
+
+    // 4. 文字内部逐条 stagger 浮出
+    const textEls = [subtitle, title, desc].filter(Boolean);
+    if (textEls.length) {
+      tl.from(textEls, {
+        opacity: 0,
+        y: 18,
+        stagger: 0.13,
+        duration: 0.5,
+        ease: "power2.out"
+      }, "-=0.35");
+    }
   });
 }

@@ -100,10 +100,21 @@ document.addEventListener("DOMContentLoaded", () => {
 		updateCarousel();
 	}
 
-	function updateCarousel() {
+	function updateCarousel(animate = true) {
 		const translateX = -currentIndex * totalCardWidth;
 
-		track.style.transform = `translateX(${translateX}px)`;
+		if (animate) {
+			// GSAP 接管滑动，替代 CSS transition
+			gsap.to(track, { x: translateX, duration: 0.65, ease: "power3.inOut" });
+			// 新卡片弹入
+			gsap.fromTo(
+				cards[currentIndex],
+				{ opacity: 0.3, scale: 0.92 },
+				{ opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)", delay: 0.3, clearProps: "transform,opacity" }
+			);
+		} else {
+			gsap.set(track, { x: translateX });
+		}
 
 		dots.forEach((dot, index) => {
 			dot.classList.toggle("active", index === currentIndex);
@@ -151,15 +162,28 @@ document.addEventListener("DOMContentLoaded", () => {
 		const newTotalCardWidth = newCardWidth + cardMargin;
 
 		const translateX = -currentIndex * newTotalCardWidth;
-		track.style.transition = "none";
-		track.style.transform = `translateX(${translateX}px)`;
-
-		setTimeout(() => {
-			track.style.transition = "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)";
-		}, 50);
+		// resize 时不做动画，直接定位
+		gsap.set(track, { x: translateX });
 	});
 
-	updateCarousel();
+	// 禁用 CSS transition，由 GSAP 全权接管
+	track.style.transition = "none";
+
+	updateCarousel(false); // 初始定位，不触发动画
+
+	// --- 页面入场动画 ---
+	gsap.set(".carousel-section", { opacity: 0, y: 55 });
+	gsap.set(".back-home", { opacity: 0, x: -20 });
+	gsap.set(".carousel-controls", { opacity: 0, y: 20 });
+	gsap.set(".dots-container", { opacity: 0 });
+	gsap.set(cards[0], { opacity: 0, scale: 0.85, y: 25 });
+
+	gsap.timeline({ delay: 0.1 })
+		.to(".back-home", { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" })
+		.to(".carousel-section", { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, "<0.1")
+		.to(cards[0], { opacity: 1, scale: 1, y: 0, duration: 0.65, ease: "back.out(1.7)", clearProps: "transform,opacity" }, "-=0.35")
+		.to(".carousel-controls", { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, "-=0.25")
+		.to(".dots-container", { opacity: 1, duration: 0.3 }, "-=0.3");
 
 	// 为CSAPP卡片添加点击事件
 	const csappCard = document.querySelector('.pregnancy-content').closest('.deconstructed-card');
@@ -168,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		csappCard.addEventListener('click', function(e) {
 			// 如果点击的不是其他链接，就跳转到CSAPP
 			if (!e.target.closest('a') || e.target.closest('.cta-link')) {
-				window.location.href = '/2025/08/02/CSAPP/';
+				window.location.href = '/2025/04/05/CSAPP/';
 			}
 		});
 	}
